@@ -36,6 +36,7 @@ namespace Functions {
 
     }        
 
+    // 2D Tchebshev array
     template <int N>
     constexpr inline std::array<std::array<double, N>, N > SetupMultipleTn() noexcept
     {

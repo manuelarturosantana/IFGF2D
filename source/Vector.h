@@ -4,6 +4,12 @@
 #include <vector>
 #include <algorithm>
 
+/*
+Assuming the vector A contains indices
+And B contains values this function returns a sorted B,
+and A returns incides containing the sort order.
+*/
+
 void new_sort(std::vector<long long>& vector_A, std::vector<long long>& vector_B) {
 
     stable_sort(vector_A.begin(), vector_A.end(),

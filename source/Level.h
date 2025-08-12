@@ -14,10 +14,12 @@ class BoxTree;
 
 class Level {
 
+    // This means that BoxTree can access the private and protected members of Level
     friend class BoxTree;
 
     private:
 
+        // An enum user defined type whose possible values are a set of named constants.
         enum ConeRefinementStrategy {
 
             Laplace = 0,
@@ -27,8 +29,8 @@ class Level {
 
         const int level_;
         const int nlevels_;
-        const double min_x_;
-        const double min_y_;
+        const double min_x_; // The x value of the lower left corner of the level d = 1 box.
+        const double min_y_; // The y value of the lower left corner of the level d = 1 box.
         const double boxsize_;
         const long long nboxesperside_;
 
@@ -140,6 +142,9 @@ class Level {
 
         }
 
+        // TODO: Look up morton ordering
+        // Has to do with the morton ordering,
+        // takes the integer a and splits by the level+1 bits with zero between them
         static uint64_t splitBy2(const unsigned int a, const int level) {
 
             uint64_t x = a;

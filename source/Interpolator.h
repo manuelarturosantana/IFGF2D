@@ -14,6 +14,9 @@ class Interpolator
 
     private:
 
+        // static means it belongs to the class, and will be shared for all instances.
+        // constexpr means the value is constant and known at compile time, so it can be 
+        // used in templates
         static constexpr int Ps = 3;
         static constexpr int Pang = 5;
 
@@ -23,11 +26,14 @@ class Interpolator
         const std::array<std::array<double, Ps>, Ps> Ts_; 
         const std::array<std::array<double, Pang>, Pang> Tang_;
 
-        const int P_;
+        const int P_; // The total number of interpolation points Ps * Pang;
 
     public:
 
         constexpr Interpolator() : 
+            // This is some fancy templating stuff to make all of this evaluated at compile time.
+            // TODO: For more flexible code we can call this precomputation cost. This is nice,
+            // but means we have to come in an explicitly change everything, which is lame.
             xs_(Functions::SetupChebyshevPoints<Ps>()),
             xang_(Functions::SetupChebyshevPoints<Pang>()),
             Ts_(Functions::SetupMultipleTn<Ps>()),
@@ -36,6 +42,8 @@ class Interpolator
         {
         }
 
+        // 1D indexing to get the interpolation point. Uses leading dimension Ps, then each
+        // row or column varyings the s variable.
         void GetInterpolationPoint(const int iter, double& x, double& y) const
         {
             x = xs_[iter % Ps];
@@ -44,16 +52,22 @@ class Interpolator
 
         constexpr int GetNInterpPoints() const {return P_;}
 
+        // Leading dimension is Ps
         constexpr int GetInterpId(const int is, const int itheta) const
         {
             return itheta*Ps + is;
         }
 
+        //
+        // double const * const means a constant pointer to a constant double
+        // const at the end means that this function does not modify the objects member variables.
+        // Evaluate the interpolant at some point x and y, (which I believe should really be s and theta).
         inline double Interpolate(const double x, const double y, double const * const vals_begin) const
         {
             std::array<double, Ps> TargetTs; 
             std::array<double, Pang> TargetTtheta;
-
+            
+            // Compute the Tchebyshev values for the x and y values.
             Functions::SetupMultipleTnArr<Ps>(x, TargetTs);
             Functions::SetupMultipleTnArr<Pang>(y, TargetTtheta);
 
@@ -72,6 +86,8 @@ class Interpolator
             return result;
         }
 
+        // Compute the coefficients in the Chebyshev interpolant.
+        // store them in array
         void GenerateInterpolant(double* const arr) const
         {     
 

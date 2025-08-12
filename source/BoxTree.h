@@ -23,12 +23,12 @@ class BoxTree
 
     private:
 
-        std::vector<double> x_;
-        std::vector<double> y_;
+        std::vector<double> x_; // x coordinates of all values to be evaluated in the IFGF
+        std::vector<double> y_; // y coordinates of all values to be evaluated in the IFGF
 
         int nlevels_;
         double wavenumber_;
-        long long N_;
+        long long N_; // Total number of points in IFGF.
 
         std::vector<Level*> levels_;
 
@@ -53,9 +53,15 @@ class BoxTree
 
         }
 
+        // Sort points according to the Morton ordering
         void SortBox(const std::array<double, 2>& min, const double boxsize) 
         {
 
+            // TODO: This allocation could be better by using
+            // #include <numeric>
+            // std::vector<long long> sorting(N_);
+            // std::iota(sorting.begin(), sorting.end(), 0);
+            // About twice as fast but won't make a noticeable different in the code.
             std::vector<long long> sorting;
 
             for (long long i = 0; i < N_; i++) {
@@ -141,7 +147,7 @@ class BoxTree
                     levels_[i]->mortonidofrelboxes_.insert(relevantmorton.begin(), relevantmorton.end());
 
                 for (auto j = relevantmorton.begin(); j != relevantmorton.end(); j++) {
-
+                    // j is an iterator. *j give the value that j points to
                     relevantparentmorton.insert(static_cast<long long>(*j/4));
 
                 }
@@ -153,6 +159,9 @@ class BoxTree
 
         }
 
+        // I believe that this function is compute bounding box
+        // Computes the values min and max such that
+        // min (resp max) contains values below (resp. above) the smallest x and y value.
         void ComputeBB(const std::vector<double>& pointsx, const std::vector<double>& pointsy,
                     std::array<double, 2>& min, std::array<double ,2>& max) const
         {
@@ -185,8 +194,11 @@ class BoxTree
 
             ComputeBB(x_, y_, min, max);          
 
+            // Choose the initial box to have side lengths slightly larger than the distance
+            // of the x and y coordinates  or the points furthest from the origin
             double boxsize = std::max(max[0] - min[0], max[1] - min[1]);
 
+            // Sort according to morton ordering. TODO: MORTON ORDERING
             SortBox(min, boxsize / (1 << (nlevels_ - 1)));
 
             levels_.resize(nlevels_, nullptr);
@@ -197,6 +209,7 @@ class BoxTree
 
             }
 
+            //
             InitializeLevelDBoxesData();
 
             InitializeRelBoxesAllLevels();
