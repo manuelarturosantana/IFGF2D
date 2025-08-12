@@ -41,7 +41,14 @@ class Level {
         long long nconeselevation_;
         std::vector<double> radial_intervals_cone_;
 
+        // morton ID of relevant boxes
+        /*
+        * unordered_set does not store values, only if an element exits
+        * unordered_map is a hash table, stores keys and values.
+        */
         std::unordered_set<long long> mortonidofrelboxes_;
+        // Each element holds the start index of the points in the morton box, as well as
+        // the number of points in that box.
         std::unordered_map<long long, std::array<long long, 2>> mortonbox2discretizationpoints_;
 
         std::unordered_set<long long> propagationrequiredrelconesegments_;
@@ -107,6 +114,7 @@ class Level {
 
         }
 
+        // Returns the morton index of the box which the point (x,y) is in
         static long long Point2Morton (const double x, const double y,
                                        const double min_x, const double min_y,
                                        const double boxsize, const int level) {
@@ -115,21 +123,26 @@ class Level {
             const long long posy = static_cast<long long>((y - min_y)/boxsize);
 
             if (posx < 0 || posy < 0 || posx >= 1 << level || posy >= 1 << level)
-                throw std::logic_error("The 3D box index cannot be < 0 or larger than the number of boxes");
+                throw std::logic_error("The 2D box index cannot be < 0 or larger than the number of boxes");
 
             return Box2Morton(posx, posy, level);
 
         }
 
+        // Returns the morton index of the box which the point (x,y) is in
         long long  Point2Morton(const double x, const double y) const {
 
             return Point2Morton(x, y, min_x_, min_y_, boxsize_, level_);
 
         }
 
+        // Returns the index of the morton order of the box given the x and y cartesian
+        // coordinate of the box in the grid, starting from the lower left corner.
         static long long Box2Morton(const long long x, const long long y, const int level) {
 
             uint64_t answer = 0;
+            // x and y get split into bits with zeros between them, and then
+            // get interleaved.
             answer |= splitBy2(x, level) | splitBy2(y, level) << 1;
 
             return answer;
@@ -142,13 +155,15 @@ class Level {
 
         }
 
-        // TODO: Look up morton ordering
-        // Has to do with the morton ordering,
-        // takes the integer a and splits by the level+1 bits with zero between them
+        // 
         static uint64_t splitBy2(const unsigned int a, const int level) {
 
             uint64_t x = a;
+            // The rightside in 2^(level+1) - 1, which means that in binary it if level was 3 we would have
+            // the right side evaluating to (in binary) 01111. Then &= grabs means that
+            // x now lowest level + 1 bits of a.
             x &= (static_cast<uint64_t>(1) << (level+1)) -1;
+            // The rest of this code spreads zeros between the bits of x
             x = (x | (x << 16)) & 0xFFFF0000FFFF;
             x = (x | (x << 8)) & 0xFF00FF00FF00FF;
             x = (x | (x << 4)) & 0xF0F0F0F0F0F0F0F;
@@ -165,6 +180,7 @@ class Level {
 
         } 
 
+        // Grab every other bit from x
         static unsigned int mergeFrom2(uint64_t x) {
 
             x &= 0x5555555555555555;
@@ -178,22 +194,26 @@ class Level {
 
         }
 
+      
         static void Morton2Box(long long morton_box, long long& x, long long& y, const int level) {
 
             if (morton_box >= 1 << (2*level))
-                throw std::invalid_argument("Current level cannot have this morton order.");
+                throw std::invalid_argument(" Morton2Box: Current level cannot have this morton order.");
 
             x = mergeFrom2(morton_box);
             y = mergeFrom2(morton_box >> 1);
 
         }
 
+        // Given a value in the morton_ordering, return the x and y coordinates of the 
+        // relevant box
         void Morton2Box(long long morton_box, long long& x, long long& y) const {
 
             Morton2Box(morton_box, x, y, level_);
 
         }
 
+        // Return closest even number <= x
         static long long even (const long long x) {
 
             return static_cast<long long>(x/2)*2;

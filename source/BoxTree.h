@@ -101,6 +101,9 @@ class BoxTree
 
         }
 
+        // Compute the start index of the points in each box and the number of points in 
+        // each box. Assumes that the points are sorted into their Morton boxes
+        // which is done in the sort box function
         void InitializeLevelDBoxesData() 
         {
 
@@ -113,6 +116,9 @@ class BoxTree
 
                 if (morton != old_morton) {
 
+                    // Records the index of the previous points
+                    // TODO: Does this work if all the points in the box are not orderd 
+                    // right next to each other. Could test by shuffling the points.
                     if (i != 0) {
 
                         levels_.back()->mortonbox2discretizationpoints_[old_morton] = {i - npoints, npoints};
@@ -135,6 +141,7 @@ class BoxTree
 
         }
 
+        // In each level flags which boxes are relevant
         void InitializeRelBoxesAllLevels() 
         {
 
@@ -143,11 +150,14 @@ class BoxTree
 
             for (int i = nlevels_-1; i >= 2; i--) {
 
+                // Store the relevant boxes for this level
                 if (i != nlevels_-1)
                     levels_[i]->mortonidofrelboxes_.insert(relevantmorton.begin(), relevantmorton.end());
 
                 for (auto j = relevantmorton.begin(); j != relevantmorton.end(); j++) {
-                    // j is an iterator. *j give the value that j points to
+                    // j is an iterator. *j give the value that j points. Dividing by 4 = 2^2
+                    // moves you one level up the tree since you are moving 2 bits over, one level
+                    // of the tree
                     relevantparentmorton.insert(static_cast<long long>(*j/4));
 
                 }
@@ -187,6 +197,7 @@ class BoxTree
             
         }
 
+        // Flags relevant boxes on all levels, creates the first bounding box
         void InitializeBoxesAndLevels() 
         {
 
@@ -198,7 +209,7 @@ class BoxTree
             // of the x and y coordinates  or the points furthest from the origin
             double boxsize = std::max(max[0] - min[0], max[1] - min[1]);
 
-            // Sort according to morton ordering. TODO: MORTON ORDERING
+            // Sort points according to morton ordering.
             SortBox(min, boxsize / (1 << (nlevels_ - 1)));
 
             levels_.resize(nlevels_, nullptr);
@@ -209,7 +220,6 @@ class BoxTree
 
             }
 
-            //
             InitializeLevelDBoxesData();
 
             InitializeRelBoxesAllLevels();
