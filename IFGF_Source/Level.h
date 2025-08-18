@@ -14,10 +14,12 @@ class BoxTree;
 
 class Level {
 
+    // This means that BoxTree can access the private and protected members of Level
     friend class BoxTree;
 
     private:
 
+        // An enum user defined type whose possible values are a set of named constants.
         enum ConeRefinementStrategy {
 
             Laplace = 0,
@@ -27,24 +29,36 @@ class Level {
 
         const int level_;
         const int nlevels_;
-        const double min_x_;
-        const double min_y_;
+        const double min_x_; // The x value of the lower left corner of the level d = 1 box.
+        const double min_y_; // The y value of the lower left corner of the level d = 1 box.
         const double boxsize_;
         const long long nboxesperside_;
 
         std::vector<long long> relconesegment2cocenteredmortonboxid_;
+        // I believe that this also tracks the number relevant cones.
         std::vector<long long> relconesegment2nonrelconesegment_;
 
+        // little h in the paper. s = h / r
         double scaling_r2s_;
+        // Number of cones in the theta direction.
         long long nconeselevation_;
+        // Interval endpoints in s of the radial interval.
         std::vector<double> radial_intervals_cone_;
 
+        // morton ID of relevant boxes
+        /*
+        * unordered_set does not store values, only if an element exits
+        * unordered_map is a hash table, stores keys and values.
+        */
         std::unordered_set<long long> mortonidofrelboxes_;
+        // Each element holds the start index of the points in the morton box, as well as
+        // the number of points in that box.
         std::unordered_map<long long, std::array<long long, 2>> mortonbox2discretizationpoints_;
 
         std::unordered_set<long long> propagationrequiredrelconesegments_;
         std::unordered_set<long long> interpolationrequiredrelconesegments_;
 
+        // This tracks given the morton box, and non-relvant cone the ID of the relevant cone.
         std::unordered_map<long long, std::unordered_map<long long, long long>> mortonboxnonrelcone2relcone_;
 
         std::unordered_map<long long, std::array<std::unordered_map<long long, std::vector<int>>, 4>> protobox_; 
@@ -68,10 +82,13 @@ class Level {
         template <ConeRefinementStrategy S = Helmholtz>
         void InitializeConeSegments(const double wavenumber) {
 
-            const double minsize = (3.0/2.0 * boxsize_) * (1.0-1e-10);
+            // The closest radial point in the boxes in the paper
+            const double minsize = (3.0/2.0 * boxsize_) * (1.0-1e-10); 
+            // The distance of anypoint or box size in the paper.
+            // Level comes in from nboxesperside
             const double maxsize = (std::sqrt(2.0) * boxsize_ * nboxesperside_ - std::sqrt(2.0)/2.0 * boxsize_) * (1.0+1e-10);
             constexpr long long nconesradial = 1;
-            constexpr long long nconeselevation = 2; 
+            constexpr long long nconeselevation = 2; // Twice as many in the theta direction
             long long nconeslevelscaling = 1;
 
             if (S == Laplace) {
@@ -79,32 +96,44 @@ class Level {
             } else if (S == Helmholtz) {
 
                 if (level_ > 1)
+                    // TODO: This looks like a hueristic to determine how many initial cones, but I'm not sure where it cones from.
+                    // Note M_1_PI is 1 / PI
                     nconeslevelscaling = std::max<long long>(1, std::ceil(wavenumber * boxsize_ * M_1_PI * 1.2)); //?
 
-            } else
+            } else {
                 throw std::invalid_argument("Unknown cone refinement strategy.");
+            }
 
             nconeselevation_ = nconeslevelscaling * nconeselevation;
             const long long nconesradialonlevel = nconeslevelscaling * nconesradial;
 
+            // Scaling for s change of variables.
             scaling_r2s_ = std::sqrt(2.0)/2.0 * boxsize_;
+            // For all source points x' and target points x we have |x'| / |x| < eta
             const double eta = std::sqrt(2.0)/3.0-1e-5;
 
             const double tmpsizeinr = (maxsize - minsize + 1e-10);
+            // S is interpolated from [0, eta].
+            // The second term is 1/minsize - 1/maxsize, the distance in the s interval.
+            // So this says use the smaller of the two, the whole size, or an interval in eta
             const double tmpsizeins = std::min(eta/nconesradialonlevel, scaling_r2s_*(1.0/minsize - 1.0/(minsize+tmpsizeinr)));
-            
+            // the s distance divided by the size of each s interval.
             const long long nactualcones = std::ceil(scaling_r2s_*(1.0/minsize - 1.0/maxsize)/tmpsizeins);
+            
             radial_intervals_cone_.resize(nactualcones+1);
             radial_intervals_cone_[0] = minsize;
     
             const double finalsizeins = (scaling_r2s_*(1.0/minsize - 1.0/maxsize)/nactualcones);
             for (long long i = nactualcones-1; i >= 0; i--) {
-                const long long iter = nactualcones - i;       
+                const long long iter = nactualcones - i;
+                // Like 27 in the IFGF paper but I don't quite understand this part :(
+                // Appears like this is stored in the r variable.
                 radial_intervals_cone_[iter] = scaling_r2s_*maxsize/(scaling_r2s_ + maxsize*i*finalsizeins);
             }
 
         }
 
+        // Returns the morton index of the box which the point (x,y) is in
         static long long Point2Morton (const double x, const double y,
                                        const double min_x, const double min_y,
                                        const double boxsize, const int level) {
@@ -113,21 +142,26 @@ class Level {
             const long long posy = static_cast<long long>((y - min_y)/boxsize);
 
             if (posx < 0 || posy < 0 || posx >= 1 << level || posy >= 1 << level)
-                throw std::logic_error("The 3D box index cannot be < 0 or larger than the number of boxes");
+                throw std::logic_error("The 2D box index cannot be < 0 or larger than the number of boxes");
 
             return Box2Morton(posx, posy, level);
 
         }
 
+        // Returns the morton index of the box which the point (x,y) is in
         long long  Point2Morton(const double x, const double y) const {
 
             return Point2Morton(x, y, min_x_, min_y_, boxsize_, level_);
 
         }
 
+        // Returns the index of the morton order of the box given the x and y cartesian
+        // coordinate of the box in the grid, starting from the lower left corner.
         static long long Box2Morton(const long long x, const long long y, const int level) {
 
             uint64_t answer = 0;
+            // x and y get split into bits with zeros between them, and then
+            // get interleaved.
             answer |= splitBy2(x, level) | splitBy2(y, level) << 1;
 
             return answer;
@@ -140,10 +174,15 @@ class Level {
 
         }
 
+        // 
         static uint64_t splitBy2(const unsigned int a, const int level) {
 
             uint64_t x = a;
+            // The rightside in 2^(level+1) - 1, which means that in binary it if level was 3 we would have
+            // the right side evaluating to (in binary) 01111. Then &= grabs means that
+            // x now lowest level + 1 bits of a.
             x &= (static_cast<uint64_t>(1) << (level+1)) -1;
+            // The rest of this code spreads zeros between the bits of x
             x = (x | (x << 16)) & 0xFFFF0000FFFF;
             x = (x | (x << 8)) & 0xFF00FF00FF00FF;
             x = (x | (x << 4)) & 0xF0F0F0F0F0F0F0F;
@@ -160,6 +199,7 @@ class Level {
 
         } 
 
+        // Grab every other bit from x
         static unsigned int mergeFrom2(uint64_t x) {
 
             x &= 0x5555555555555555;
@@ -173,22 +213,26 @@ class Level {
 
         }
 
+      
         static void Morton2Box(long long morton_box, long long& x, long long& y, const int level) {
 
             if (morton_box >= 1 << (2*level))
-                throw std::invalid_argument("Current level cannot have this morton order.");
+                throw std::invalid_argument(" Morton2Box: Current level cannot have this morton order.");
 
             x = mergeFrom2(morton_box);
             y = mergeFrom2(morton_box >> 1);
 
         }
 
+        // Given a value in the morton_ordering, return the x and y coordinates of the 
+        // relevant box
         void Morton2Box(long long morton_box, long long& x, long long& y) const {
 
             Morton2Box(morton_box, x, y, level_);
 
         }
 
+        // Return closest even number <= x
         static long long even (const long long x) {
 
             return static_cast<long long>(x/2)*2;
@@ -201,6 +245,7 @@ class Level {
 
         }
 
+        // Should be called get Relevant cousins. Doesn't return any other.
         std::vector<long long> GetCousins(const long long morton_box) const {
 
             std::vector<long long> cousins;
@@ -248,6 +293,8 @@ class Level {
 
         }
 
+        // The non-relevant cones repsent the relative location of the cone to the center of the box
+        // in a certain numbering
         long long Cart2Nonrelcone(const long long mortonbox, double x, double y) const {
 
             double centerx, centery;
@@ -255,12 +302,15 @@ class Level {
             x -= centerx;
             y -= centery;
             Functions::CartToPol(x, y);
+              // upper_bound returns an iterator pointing to the first element greater than the value being searched for.
             const long long posr = static_cast<long long>(std::upper_bound(radial_intervals_cone_.begin(), radial_intervals_cone_.end(), x)
             - radial_intervals_cone_.begin()) - 1;
             const long long postheta = static_cast<long long>(y * nconeselevation_ / M_PI);
             return Twodimensionalconesegment2nonrelconesegment(posr, postheta);
 
         }
+
+                 
 
         long long MortonboxNonrelconesegment2Relconesegment(long long morton_box, long long nonrelconesegment) const {
 
@@ -312,12 +362,14 @@ class Level {
 
         }
 
+        
         std::vector<long long> GetNeighbours(long long morton_box) {
 
             std::vector<long long> neighbours;
             neighbours.reserve(9);
             long long x, y;
             Morton2Box(morton_box, x, y);
+            // Max and min make sure we stay in bounds
             long long xlo = std::max<long long>(0, x-1);
             long long xup = std::min<long long>(nboxesperside_-1, x+1);
             long long ylo = std::max<long long>(0, y-1);

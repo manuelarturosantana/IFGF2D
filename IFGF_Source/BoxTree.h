@@ -23,12 +23,12 @@ class BoxTree
 
     private:
 
-        std::vector<double> x_;
-        std::vector<double> y_;
+        std::vector<double> x_; // x coordinates of all values to be evaluated in the IFGF
+        std::vector<double> y_; // y coordinates of all values to be evaluated in the IFGF
 
         int nlevels_;
         double wavenumber_;
-        long long N_;
+        long long N_; // Total number of points in IFGF.
 
         std::vector<Level*> levels_;
 
@@ -53,9 +53,15 @@ class BoxTree
 
         }
 
+        // Sort points according to the Morton ordering
         void SortBox(const std::array<double, 2>& min, const double boxsize) 
         {
 
+            // TODO: This allocation could be better by using
+            // #include <numeric>
+            // std::vector<long long> sorting(N_);
+            // std::iota(sorting.begin(), sorting.end(), 0);
+            // About twice as fast but won't make a noticeable different in the code.
             std::vector<long long> sorting;
 
             for (long long i = 0; i < N_; i++) {
@@ -95,6 +101,9 @@ class BoxTree
 
         }
 
+        // Compute the start index of the points in each box and the number of points in 
+        // each box. Assumes that the points are sorted into their Morton boxes
+        // which is done in the sort box function
         void InitializeLevelDBoxesData() 
         {
 
@@ -107,6 +116,9 @@ class BoxTree
 
                 if (morton != old_morton) {
 
+                    // Records the index of the previous points
+                    // TODO: Does this work if all the points in the box are not orderd 
+                    // right next to each other. Could test by shuffling the points.
                     if (i != 0) {
 
                         levels_.back()->mortonbox2discretizationpoints_[old_morton] = {i - npoints, npoints};
@@ -129,6 +141,7 @@ class BoxTree
 
         }
 
+        // In each level flags which boxes are relevant
         void InitializeRelBoxesAllLevels() 
         {
 
@@ -137,11 +150,14 @@ class BoxTree
 
             for (int i = nlevels_-1; i >= 2; i--) {
 
+                // Store the relevant boxes for this level
                 if (i != nlevels_-1)
                     levels_[i]->mortonidofrelboxes_.insert(relevantmorton.begin(), relevantmorton.end());
 
                 for (auto j = relevantmorton.begin(); j != relevantmorton.end(); j++) {
-
+                    // j is an iterator. *j give the value that j points. Dividing by 4 = 2^2
+                    // moves you one level up the tree since you are moving 2 bits over, one level
+                    // of the tree
                     relevantparentmorton.insert(static_cast<long long>(*j/4));
 
                 }
@@ -153,6 +169,9 @@ class BoxTree
 
         }
 
+        // I believe that this function is compute bounding box
+        // Computes the values min and max such that
+        // min (resp max) contains values below (resp. above) the smallest x and y value.
         void ComputeBB(const std::vector<double>& pointsx, const std::vector<double>& pointsy,
                     std::array<double, 2>& min, std::array<double ,2>& max) const
         {
@@ -178,6 +197,7 @@ class BoxTree
             
         }
 
+        // Flags relevant boxes on all levels, creates the first bounding box
         void InitializeBoxesAndLevels() 
         {
 
@@ -185,8 +205,11 @@ class BoxTree
 
             ComputeBB(x_, y_, min, max);          
 
+            // Choose the initial box to have side lengths slightly larger than the distance
+            // of the x and y coordinates  or the points furthest from the origin
             double boxsize = std::max(max[0] - min[0], max[1] - min[1]);
 
+            // Sort points according to morton ordering.
             SortBox(min, boxsize / (1 << (nlevels_ - 1)));
 
             levels_.resize(nlevels_, nullptr);
@@ -203,6 +226,8 @@ class BoxTree
 
         }
 
+        // Returns an ordered map where if it is given the cousin box as a key, it returns a vector containing
+        // all cone segements relevant to that box
         void GetRelevantConeSegmentsDueToCousinSurface(const int level, std::unordered_map<long long, std::vector<long long>> & mortonboxnonrelconesegment) const {
 
             long long old_morton_box = -1;
@@ -217,26 +242,30 @@ class BoxTree
                 const long long morton_box = levels_[level]->Point2Morton(x, y);
 
                 if (morton_box != old_morton_box) {
-
+                    // Get Cousins only returns the relevant cousins
                     cousins = levels_[level]->GetCousins(morton_box);
                     old_morton_box = morton_box;
 
                 }
 
+                // For each cousin, compute the cone segments that matter to it.
                 for (int j = 0; j < cousins.size(); j++) {
-
                     const long long morton_cousin = cousins[j];
                     const long long nonrel_conesegment = levels_[level]->Cart2Nonrelcone(morton_cousin, x, y);
+                    // store the cone segement in the unordered set relating to the cousin.
+                    // Note if the cone segement is already flagged nothing happens when
+                    // inserting it again here.
                     tmpmortonboxnonrelconesegment[morton_cousin].insert(nonrel_conesegment);
-    
+
                 }
 
             }
 
             for (auto i = tmpmortonboxnonrelconesegment.begin(); i != tmpmortonboxnonrelconesegment.end(); i++) {
-
+                // second is the value of the iterator i, which is itself and iterator
                 std::vector<long long> tmp(i->second.begin(), i->second.end());
                 std::sort(tmp.begin(), tmp.end());
+                // first is the key of the iterator
                 mortonboxnonrelconesegment[i->first] = tmp;
 
             }
@@ -722,6 +751,8 @@ class BoxTree
         
         }
 
+        // Having already computed the the relevant cones compute the interpolants
+        // in the cones for the next level up.
         template<void _factorization(const double, double&, double&)>
         void Propagation(const int level) {
 
@@ -741,6 +772,7 @@ class BoxTree
 
                 const long long new_coeffs_begin_id = rel_conesegment * IPSCHEME_.GetNInterpPoints(); 
                 
+                // TODO: Seems like a silly if statement. Won't this always be true by the previous line
                 if (new_coeffs_begin_id % IPSCHEME_.GetNInterpPoints() != 0)
                     throw std::logic_error("Coeffs need to start at a multiple of interpolation points.");
 
@@ -766,14 +798,16 @@ class BoxTree
 
                 }
 
+                // For each child of a parent evaluate at new interpolation points,
                 for (int childiter = 0; childiter < morton_children.size(); childiter++) {
 
                     const long long morton_child = morton_children[childiter];
+                    // Order the four children
                     const long long child_pos = morton_child % 4;
                     const std::unordered_map<long long, std::vector<int>>& childnonrelcones = allchildnonrelcones.at(child_pos);
                     
                     for (auto childconeiter = childnonrelcones.begin(); childconeiter != childnonrelcones.end(); childconeiter++) {
-                        
+                        // TODO: Does the vector in child cone iter holds points to interpolate at
                         for (int interpiter = 0; interpiter < childconeiter->second.size(); interpiter++) {
 
                             const int interpid = childconeiter->second[interpiter];
@@ -826,6 +860,11 @@ class BoxTree
 
         }
 
+
+        // Evaluate the interpolants. For every point aggregate all the
+        // contributions from all boxes for which x lives in a cousin box from.
+        // We loop over points, and then boxes for which the box x lives in is a 
+        // cousin box to.
         template<void _factorization(const double, double&, double&)>
         void Interpolation(const int level) {
 
@@ -880,6 +919,7 @@ class BoxTree
                     const double tmpreal = IPSCHEME_.Interpolate(locx, locy, cousincoeffs_real[cousiniter]);
                     const double tmpimag = IPSCHEME_.Interpolate(locx, locy, cousincoeffs_imag[cousiniter]);
 
+                    // Complex multiplication
                     value_real += tmpreal * fac_real - tmpimag * fac_imag;
                     value_imag += tmpreal * fac_imag + tmpimag * fac_real;
 

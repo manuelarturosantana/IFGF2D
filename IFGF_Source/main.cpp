@@ -1,9 +1,13 @@
 #include <cmath>
 #include <iostream>
+#include <complex>
 
 #include "BoxTree.h"
+// #include <complex_bessel.h>
 
+int num_f_evals = 0; // Check the number of function evaluations, which experiementally is about N log N :)
 const double wavenumber_ = M_PI;
+const std::complex<double> imag_unit (0,1.0);
 
 inline static void fct(const double x1, const double x2,
                        const double y1, const double y2,
@@ -29,8 +33,16 @@ inline static void fac(const double distance, double& re, double& im)
 
     re = cos(wavenumber_ * distance) / distance;
     im = sin(wavenumber_ * distance) / distance;
+    num_f_evals += 1;
 
 }
+// TODO: What is distance and how does this play a role in the kernel evaluation?
+// Hankel function factored form--- what is distance?
+// inline static void fach(const double distance, double& re, double& im) 
+// {
+//     std::complex<double> out      = sp_bessel::hankelH1(0, wavenumber_ * distance);
+//     out /= std::exp(imag_unit * wavenumber_ * distance);
+// }
 
 void GenerateCircle(const long long npoints, const double r, std::vector<double>& x, std::vector<double>& y) {
 
@@ -124,6 +136,8 @@ int main(int argc, char *argv[])
             std::cout << "L2 Error = " << error << std::endl;
 
         }
+
+        std::cout << "Number of F evals " << num_f_evals << std::endl;
         
     } catch (std::exception& e) {
 
