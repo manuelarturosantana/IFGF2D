@@ -1,4 +1,5 @@
 #pragma once
+
 #include <vector>
 #include <cmath>
 
@@ -16,19 +17,19 @@ class ClosedCurve {
         double comp_segement_length(double a, double b);
 
         // Returns a vector of right endpoints dividing ab in half (in parameter space) until
-        //  the segment length is less than size_lim
+        //  the segment length is less than size_lim.
         void ref_seg_len(double a, double b, double size_lim, std::vector<double>& seg_endpts);
 
-        /// @brief For the 2pi parameterized curve compute the t lims to split it into patches
+        /// @brief For the 2pi parameterized curve compute the t limits of patches of size less than
+        ///        wavelengths_per_patch.
         /// @param wavelengths_per_patch Number of wavelengths before each patch. usually 1
         /// @param wavenumber The wavenumber for the problem
-        /// @param num_int_points Number of points to use in the integration. May need to be larger for larger curves
         /// @return A vector where v[i],v[i+1] gives the t limits for patch i, i = 0,...,v.size() - 1;
         std::vector<double> compute_patch_lims(double wavelengths_per_patch, double wavenumber);
 
         virtual ~ClosedCurve() = default;
 
-        int num_integration_points;
+        int num_integration_points; // Number of integration points for computing patch size
         std::vector<double> integration_nodes;
         std::vector<double> integration_weights;
    
