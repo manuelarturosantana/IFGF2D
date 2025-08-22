@@ -7,7 +7,7 @@ double ClosedCurve::comp_segement_length(double a, double b) {
         ab_nodes[ii] = ab2cd(integration_nodes[ii], -1.0, 1.0, a, b);
     }
 
-    xpt(ab_nodes, xps, yps);
+    gpt_vec(ab_nodes, xps, yps);
 
     double seg_len = 0.0;
     for (int ii = 0; ii < num_integration_points; ii++) {
@@ -51,7 +51,7 @@ std::vector<double> ClosedCurve::compute_patch_lims(double wavelengths_per_patch
         double right_endpoint = 2 * M_PI * (ii + 1) / static_cast<double> (num_intervals);
 
         // DEBUG: Print the left and right endpoints
-        std::cout << "Left endpoint: " << left_endpoint << ", Right endpoint: " << right_endpoint << std::endl;
+        // std::cout << "Left endpoint: " << left_endpoint << ", Right endpoint: " << right_endpoint << std::endl;
 
         ref_seg_len(left_endpoint, right_endpoint, wavelength * wavelengths_per_patch, patch_lims);
     } 
@@ -59,38 +59,68 @@ std::vector<double> ClosedCurve::compute_patch_lims(double wavelengths_per_patch
     return patch_lims;
 }
 
-
-
-void Circle::xt(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const {
-    xs.clear(); ys.clear(); xs.reserve(ts.size()); ys.reserve(ts.size());
+void ClosedCurve::xt_vec(const std::vector<double>& ts, std::vector<double>& xs) const {
+    xs.clear(); xs.reserve(ts.size());
     for (double tval : ts) {
-        xs.push_back(radius * std::cos(tval) + centerx);
-        ys.push_back(radius * std::sin(tval) + centery);
+        xs.push_back(xt(tval));
     }
 }
 
-void Circle::xpt(const std::vector<double>& ts, std::vector<double>& xps, std::vector<double>& yps) const {
-xps.clear(); yps.clear(); xps.reserve(ts.size()); yps.reserve(ts.size());
+void ClosedCurve::yt_vec(const std::vector<double>& ts, std::vector<double>& ys) const {
+    ys.clear(); ys.reserve(ts.size());
     for (double tval : ts) {
-        xps.push_back(-radius * std::sin(tval) + centerx);
-        yps.push_back(radius * std::cos(tval) + centery);
+        ys.push_back(yt(tval));
     }
 }
 
 
-
-void Kite::xt(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const {
-    xs.clear(); ys.clear(); xs.reserve(ts.size()); ys.reserve(ts.size());
+void ClosedCurve::xpt_vec(const std::vector<double>& ts, std::vector<double>& xps) const {
+    xps.clear(); xps.reserve(ts.size());
     for (double tval : ts) {
-        xs.push_back(A * std::cos(tval) + B * std::cos(2 * tval) + C);
-        ys.push_back(D * std::sin(tval));
+        xps.push_back(xpt(tval));
     }
 }
 
-void Kite::xpt(const std::vector<double>& ts, std::vector<double>& xps, std::vector<double>& yps) const {
-    xps.clear(); yps.clear(); xps.reserve(ts.size()); yps.reserve(ts.size());
+void ClosedCurve::ypt_vec(const std::vector<double>& ts, std::vector<double>& yps) const {
+    yps.clear(); yps.reserve(ts.size());
     for (double tval : ts) {
-        xps.push_back(-A * std::sin(tval) - 2 * B * std::sin(2 * tval));
-        yps.push_back(D * std::cos(tval));
+        yps.push_back(ypt(tval));
     }
+}
+
+/////////////////////////////////////// Derived Geometry Classes ///////////////////////////////////////
+// Circle x and y coordinate functions
+double Circle::xt(double t) const {
+    return radius * std::cos(t) + centerx;
+}
+
+double Circle::yt(double t) const {
+    return radius * std::sin(t) + centery;
+}
+
+// Circle x' and y' coordinate functions
+double Circle::xpt(double t) const {
+    return -radius * std::sin(t);
+}
+
+double Circle::ypt(double t) const {
+    return radius * std::cos(t);
+}
+
+// Kite x and y coordinate functions
+double Kite::xt(double t) const {
+    return A * std::cos(t) + B * std::cos(2 * t) + C;
+}
+
+double Kite::yt(double t) const {
+    return D * std::sin(t);
+}
+
+// Kite x' and y' coordinate functions
+double Kite::xpt(double t) const {
+    return -A * std::sin(t) - 2 * B * std::sin(2 * t);
+}
+
+double Kite::ypt(double t) const {
+    return D * std::cos(t);
 }

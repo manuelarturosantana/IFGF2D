@@ -11,6 +11,7 @@
 #include <utility>
 #include <omp.h>
 #include <functional>
+#include <iostream>
 
 #include <Eigen/Dense>
 
@@ -206,6 +207,7 @@ namespace Cheb1D {
         Eigen::MatrixXd A = Eigen::MatrixXd::Zero(N - 1, N - 1);
         A.diagonal(1).setConstant(0.5);   // superdiagonal
         A.diagonal(-1).setConstant(0.5);  // subdiagonal
+        A(0,1) = 1.0;
 
         // TODO SPEEDUP: Eigen is column major, this is a last row traversal.
         // The matrices are small however, so many this won't be so bad.
@@ -214,16 +216,15 @@ namespace Cheb1D {
             A(N-2, i) -= f_coeffs[i] / (2.0 * f_coeffs.back());
         }
 
-
         Eigen::EigenSolver<Eigen::MatrixXd> es(A);
 
         // Process Eigenvalues to only be those in the interval
         Eigen::VectorXcd eigenvalues = es.eigenvalues();
         std::vector<double> roots; roots.reserve(N - 1);
 
-        // There will be complex roots, so we have to filter these out
+      
         for (int i = 0; i < eigenvalues.size(); i++) {
-
+              // There will be complex roots, so we have to filter these out
             if(std::abs(eigenvalues(i).imag()) < 1e-3 &&
                 eigenvalues(i).real() > -1 && eigenvalues(i).real() < 1) {
 

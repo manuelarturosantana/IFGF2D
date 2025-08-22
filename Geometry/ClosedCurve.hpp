@@ -5,12 +5,33 @@
 
 #include "../utils/quadrature.hpp"
 
+// Waring: It is assumed that the parameterization is positively oriented
 class ClosedCurve {
     public:
         // Returns x and y coordinates of points in space.
-        virtual void xt(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const = 0;
+        void gt_vec(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const {
+            xt_vec(ts, xs); yt_vec(ts, ys);
+         }
         // Returns tangential derivatives of points in space.
-        virtual void xpt(const std::vector<double>& ts, std::vector<double>& xps, std::vector<double>& yps) const = 0;
+        void gpt_vec(const std::vector<double>& ts, std::vector<double>& xps, std::vector<double>& yps)  const{
+            xpt_vec(ts, xps); ypt_vec(ts, yps);
+        }
+
+        // Return seperately the x and y coordinates of the points in space for vector
+        void xt_vec(const std::vector<double>& ts, std::vector<double>& xs) const;
+        void yt_vec(const std::vector<double>& ts, std::vector<double>& ys) const;
+        void xpt_vec(const std::vector<double>& ts, std::vector<double>& xps) const;
+        void ypt_vec(const std::vector<double>& ts, std::vector<double>& yps) const;
+
+        // Single coordinate versions.
+        // TODO SPEEDUP: Since these are virtual they go through a vtable lookup, and probably 
+        // won't be inlined. New c++ compilers do devirtualization, but if code is too slow
+        // one could implement this superclass in a functional framework ??
+        virtual double inline xt(double t) const = 0;
+        virtual double inline yt(double t) const = 0;
+        virtual double inline xpt(double t) const = 0;
+        virtual double inline ypt(double t) const = 0;
+        
 
         // Computes the length of the integration segment corresponding to the parameterization
         // between a and b
@@ -61,8 +82,11 @@ class Circle : public ClosedCurve {
         Circle(double centerx=0.0, double centery=0.0, double radius=1.0) :  ClosedCurve(),
          centerx(centerx), centery(centery), radius(radius) { }
 
-        void xt(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const override;
-        void xpt(const std::vector<double>& ts, std::vector<double>& xps, std::vector<double>& yps) const override;
+        double xt(double t) const override;
+        double yt(double t) const override;
+        double xpt(double t) const override;
+        double ypt(double t) const override;
+
 };
 
 
@@ -77,8 +101,10 @@ class Kite : public ClosedCurve {
         Kite(double A=1.0, double B=0.65, double C=-0.65, double D=1.5) : ClosedCurve(),
          A(A), B(B), C(C), D(D) {};
 
-        void xt(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const override;
-        void xpt(const std::vector<double>& ts, std::vector<double>& xps, std::vector<double>& yps) const override;
+        double xt(double t) const override;
+        double yt(double t) const override;
+        double xpt(double t) const override;
+        double ypt(double t) const override;
 };
 
 
