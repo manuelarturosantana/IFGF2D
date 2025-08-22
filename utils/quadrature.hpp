@@ -4,7 +4,7 @@
 #include <cmath>
 
 //.Send x in ab to cd
-double inline ab2cd(const double a, const double b, const double c, const double d, const double x)
+double inline ab2cd(const double x, const double a, const double b, const double c, const double d)
 {
 
     return ((d - c) / (b - a)) * (x - a) + c;
@@ -51,6 +51,7 @@ double inline v_func(double t, double p) {
 double inline vp_func(double t, double p) {
     double val = (3.0 / M_PI) * (0.5 - (1.0 / p)) * std::pow((t / M_PI) - 1.0, 2);
     val += 1.0 / (p * M_PI);
+    return val;
 }
 
 /// base form of w change of variables. t \in [0,2\pi]
@@ -67,6 +68,7 @@ double inline wp_cov_base(double t, double p) {
     val /= std::pow(
         std::pow(v_func(t, p),p) + std::pow(v_func(2 * M_PI, p),p), 2
      );
+     return val;
 }
 
 /// normalized form of the w change of variables. t in [-1,1]

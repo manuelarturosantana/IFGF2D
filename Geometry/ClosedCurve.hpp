@@ -32,15 +32,24 @@ class ClosedCurve {
         int num_integration_points; // Number of integration points for computing patch size
         std::vector<double> integration_nodes;
         std::vector<double> integration_weights;
-   
 
-        ClosedCurve(int num_integration_points = 200) : num_integration_points(num_integration_points) {
+        void inline set_integration_points() {
             // initialize the integration nodes and weights
             integration_nodes.resize(num_integration_points);
             integration_weights.resize(num_integration_points);
             fejerquadrature1(integration_nodes, integration_weights, num_integration_points);
         }
-  
+
+        // Free the memory used by integration nodes and weights.
+        // This will be useful so that each patch can have its own curve, with low memory.
+        void integration_data_cleanup() {
+            std::vector<double>().swap(integration_nodes);
+            std::vector<double>().swap(integration_weights);
+        }
+   
+        ClosedCurve(int num_integration_points = 200) : num_integration_points(num_integration_points) {
+            set_integration_points();
+        }  
 };
 
 class Circle : public ClosedCurve { 

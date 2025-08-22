@@ -1,4 +1,4 @@
-#include "Patches.hpp"
+#include "Patch.hpp"
 
 
 // Helper function to subtract two vectors for the bounding box
@@ -28,3 +28,10 @@ bool BoundingBox::is_inside(double xp, double yp) {
     return (0 <= BmAdotpmA && BmAdotpmA <= BmAdotBmA) &&
            (0 <= CmBdotpmB && CmBdotpmB <= CmBdotCmB);
 }
+
+
+/////////////////////////////////// Patch ////////////////////////////////////////////////
+
+// template<typename T, int N>
+// void Patch<T, N>::comp_bounding_box() {
+// }

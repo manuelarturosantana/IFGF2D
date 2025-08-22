@@ -4,7 +4,7 @@ double ClosedCurve::comp_segement_length(double a, double b) {
     std::vector<double> xps, yps, ab_nodes(num_integration_points);
 
     for (int ii = 0; ii < num_integration_points; ii++) {
-        ab_nodes[ii] = ab2cd(-1.0, 1.0, a, b, integration_nodes[ii]);
+        ab_nodes[ii] = ab2cd(integration_nodes[ii], -1.0, 1.0, a, b);
     }
 
     xpt(ab_nodes, xps, yps);

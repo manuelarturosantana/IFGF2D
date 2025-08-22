@@ -21,7 +21,15 @@ set(COMP_BESS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/complex_bessel-master/build/lib6
 
 set(GEOMETRY_SOURCE_DIR Geometry)
 set(GEOMETRY_SOURCES 
-    ${GEOMETRY_SOURCE_DIR}/ClosedCurve.cpp)
+    ${GEOMETRY_SOURCE_DIR}/ClosedCurve.cpp
+    ${GEOMETRY_SOURCE_DIR}/Patch.cpp)
+
+# $ENV{MKLROOT}/include
+# $ENV{I_MPI_ROOT}/include
+include_directories(/opt/Eigen/)
+# set(COMMON_INCLUDE_DIRS
+#     /opt/Eigen/
+# )
 ##########################################################################################
 
 add_executable(IFGF_main
@@ -42,3 +50,17 @@ target_compile_options(IFGF_main PRIVATE -Wall -Wextra)
 add_executable(ClosedCurvePatchSplitting
                 ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
 target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
+
+add_executable(BoundingBoxTests
+                ${GEOMETRY_SOURCES} tests/Geometry/BoundingBoxTests.cpp)
+target_compile_options(BoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
+
+add_executable(ComputeBoundingBoxTests
+                ${GEOMETRY_SOURCES} tests/Geometry/ComputeBoundingBoxTests.cpp)
+# target_include_directories(ComputeBoundingBoxTests PRIVATE ${COMMON_INCLUDE_DIRS})
+target_compile_options(ComputeBoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
+
+################################ UTILS TESTS #############################################
+add_executable(Cheb1d_test tests/utils/Cheb1d_test)
+# target_include_directories(Cheb1d_test PRIVATE ${COMMON_INCLUDE_DIRS})
+target_compile_options(Cheb1d_test PRIVATE ${COMMON_COMPILE_FLAGS})
