@@ -40,7 +40,13 @@ class Patch {
         bool ist1corner, ist2corner; // Tracks it patch has corner endpoints
 
         BoundingBox bounding_box_; 
-        std::unique_ptr<ClosedCurve> curve_; // TODO Should this be a pointer to a curve?
+        std::unique_ptr<ClosedCurve> curve_;
+        
+        // Vector or Eigen Matrix of singular (in patch) precomputations
+        // Hash table checking with keys at point index, and values as location of 
+        // of start of precomputations in near singular precomputations
+        // Vector or Eigen matrix of near singular precomputations
+
 
     Patch(double t1, double t2, std::unique_ptr<ClosedCurve> curve, double delta) : 
         t1(t1), t2(t2), curve_(std::move(curve)), delta(delta) {};
