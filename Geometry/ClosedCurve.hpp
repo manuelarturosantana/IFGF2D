@@ -3,7 +3,7 @@
 #include <vector>
 #include <cmath>
 
-#include "../utils/quadrature.hpp"
+#include "../utils/Quadrature.hpp"
 
 // Waring: It is assumed that the parameterization is positively oriented
 class ClosedCurve {

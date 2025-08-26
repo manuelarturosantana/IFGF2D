@@ -21,8 +21,7 @@ set(COMP_BESS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/complex_bessel-master/build/lib6
 
 set(GEOMETRY_SOURCE_DIR Geometry)
 set(GEOMETRY_SOURCES 
-    ${GEOMETRY_SOURCE_DIR}/ClosedCurve.cpp
-    ${GEOMETRY_SOURCE_DIR}/Patch.cpp)
+    ${GEOMETRY_SOURCE_DIR}/ClosedCurve.cpp)
 
 # $ENV{MKLROOT}/include
 # $ENV{I_MPI_ROOT}/include
@@ -64,3 +63,6 @@ target_compile_options(ComputeBoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
 add_executable(Cheb1d_test tests/utils/Cheb1d_test)
 # target_include_directories(Cheb1d_test PRIVATE ${COMMON_INCLUDE_DIRS})
 target_compile_options(Cheb1d_test PRIVATE ${COMMON_COMPILE_FLAGS})
+
+add_executable(SingularIntegral tests/utils/SingularIntegral)
+target_compile_options(SingularIntegral PRIVATE ${COMMON_COMPILE_FLAGS})

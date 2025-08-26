@@ -20,7 +20,8 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
     for (size_t i = 0; i < patch_lims.size() - 1; i++) {
         // std::make_unique creates a unique kite on the heap
-        patches.emplace_back(patch_lims[i], patch_lims[i + 1], std::make_unique<Kite>(), 0.1);
+        // patches.emplace_back(patch_lims[i], patch_lims[i + 1], std::make_unique<Kite>(), 0.1);
+        patches.emplace_back(patch_lims[i], patch_lims[i + 1], kite, 0.1);
         patches[i].comp_bounding_box();    
     }
     auto end = std::chrono::high_resolution_clock::now();

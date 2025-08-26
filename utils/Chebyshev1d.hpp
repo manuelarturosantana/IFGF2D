@@ -15,7 +15,7 @@
 
 #include <Eigen/Dense>
 
-#include "quadrature.hpp"
+#include "Quadrature.hpp"
 
 namespace Cheb1D {
 
