@@ -42,7 +42,8 @@ class ClosedCurve {
         void ref_seg_len(double a, double b, double size_lim, std::vector<double>& seg_endpts);
 
         /// @brief For the 2pi parameterized curve compute the t limits of patches of size less than
-        ///        wavelengths_per_patch.
+        ///        wavelengths_per_patch. Sets and cleans up the integration points 
+        ///        used while doing this
         /// @param wavelengths_per_patch Number of wavelengths before each patch. usually 1
         /// @param wavenumber The wavenumber for the problem
         /// @return A vector where v[i],v[i+1] gives the t limits for patch i, i = 0,...,v.size() - 1;

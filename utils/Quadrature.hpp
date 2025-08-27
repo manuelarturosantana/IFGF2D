@@ -59,23 +59,6 @@ void inline fejerquadrature1(Eigen::VectorXd& nodes, Eigen::VectorXd& weights, i
 
 }
 
-///////////////////////////// GSS ////////////////////////////////////////////////////////
-// double golden_section_search(const std::function<double (double)>& f, double a, double b, 
-//         double tolerance) {
-//     const double invphi = (std::sqrt(5.0) - 1) / 2.0;
-
-//     while (std::abs(b - a) > tolerance) {
-//         double c = b - (b - a) * invphi;
-//         double d = a + (b - a) * invphi;
-//         if (f(c) < f(d)) {
-//             b = d;
-//         } else {
-//            a = c;
-//         }
-//     }
-
-//     return (a + b) / 2.0;
-// }
 
 /////////////////////////// RP Changes of Variables //////////////////////////////////////
 

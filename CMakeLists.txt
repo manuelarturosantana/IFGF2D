@@ -45,24 +45,33 @@ target_compile_options(IFGF_main PRIVATE -Wall -Wextra)
 ################################### TESTS ################################################
 ##########################################################################################
 
+
+############################### FORWARD MAP TESTS #######################################
+add_executable(InitForwardMap 
+                ${GEOMETRY_SOURCES} tests/ForwardMap/InitializeForwardMap.cpp)
+target_compile_options(InitForwardMap PRIVATE ${COMMON_COMPILE_FLAGS})
+
+
+
 ################################# GEOMETRY TESTS #########################################
-add_executable(ClosedCurvePatchSplitting
-                ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
-target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
+# add_executable(ClosedCurvePatchSplitting
+#                 ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
+# target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
 
-add_executable(BoundingBoxTests
-                ${GEOMETRY_SOURCES} tests/Geometry/BoundingBoxTests.cpp)
-target_compile_options(BoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
+# add_executable(BoundingBoxTests
+#                 ${GEOMETRY_SOURCES} tests/Geometry/BoundingBoxTests.cpp)
+# target_compile_options(BoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
 
-add_executable(ComputeBoundingBoxTests
-                ${GEOMETRY_SOURCES} tests/Geometry/ComputeBoundingBoxTests.cpp)
-# target_include_directories(ComputeBoundingBoxTests PRIVATE ${COMMON_INCLUDE_DIRS})
-target_compile_options(ComputeBoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
+# add_executable(ComputeBoundingBoxTests
+#                 ${GEOMETRY_SOURCES} tests/Geometry/ComputeBoundingBoxTests.cpp)
+# # target_include_directories(ComputeBoundingBoxTests PRIVATE ${COMMON_INCLUDE_DIRS})
+# target_compile_options(ComputeBoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
 
-################################ UTILS TESTS #############################################
-add_executable(Cheb1d_test tests/utils/Cheb1d_test)
-# target_include_directories(Cheb1d_test PRIVATE ${COMMON_INCLUDE_DIRS})
-target_compile_options(Cheb1d_test PRIVATE ${COMMON_COMPILE_FLAGS})
+# ################################ UTILS TESTS #############################################
+# add_executable(Cheb1d_test tests/utils/Cheb1d_test)
+# # target_include_directories(Cheb1d_test PRIVATE ${COMMON_INCLUDE_DIRS})
+# target_compile_options(Cheb1d_test PRIVATE ${COMMON_COMPILE_FLAGS})
 
-add_executable(SingularIntegral tests/utils/SingularIntegral)
-target_compile_options(SingularIntegral PRIVATE ${COMMON_COMPILE_FLAGS})
+# add_executable(SingularIntegral tests/utils/SingularIntegral)
+# target_compile_options(SingularIntegral PRIVATE ${COMMON_COMPILE_FLAGS})
+

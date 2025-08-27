@@ -46,7 +46,12 @@ class Patch {
         // as Eigen is column major
         Eigen::Matrix2cd precomputations;
 
-        BoundingBox bounding_box_; 
+        BoundingBox bounding_box_;
+        
+        // Stores the index over all curve points of the near singular point indices
+        std::vector<long long> near_singular_point_indices_;
+        // Location of tvals corresponding to the near singular points.
+        std::vector<double>  near_singular_point_ts_; 
 
         // Storing the curve as a reference means we must guarantee that the curve passed 
         // in outlives all the patch objects that use it. If this is an issue

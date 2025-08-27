@@ -4,7 +4,21 @@
 #include <memory>
 
 
-#include "../Geometry/Patch.hpp";
+#include "../Geometry/Patch.hpp"
+
+/*
+Potential Future Improvements
+     --> determine_patch_near_singular_points currently assumes a closed curve that does not
+         nearly self intersect so that near singular points only come from adjecent patches
+     --> I suspect most of the near singular points are very near the endpoints of the patches
+         We may want to use Brent's method or perhaps just project to the patch enpoint to
+         If the gss part becomes much to slow
+     --> Rather than GSS for now I am just going to do the change of variables at the endpoints
+         of the patch. As long as it is not nearly self intersecting this should work.
+
+*/
+
+
 
 /// @brief Class which computes the forward map of the greens function operator
 /// @tparam Np Number of points to use per patch for integration
@@ -14,18 +28,23 @@ class ForwardMap {
     public:
         std::vector<Patch<Nroot>> patches_; 
         long long num_patches_;
-        long long total_num_unknowns;
+        long long total_num_unknowns_;
+
+        ClosedCurve& curve_;
 
         double delta_; // Rectangular Polar Near Singularity Parameter
+        int near_singular_patch_est_; // Assume all near singular points are in patches only 1 away from this
+        double gss_tol_;
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
         std::vector<double> ys_;
 
-        std::vector<double> fejer_nodes;
-        std::vector<double> fejer_weights;
+        std::vector<double> fejer_nodes_;
+        std::vector<double> fejer_weights_;
 
         
-        ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, double patch_split_wavenumber);
+        ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
+            double patch_split_wavenumber, int near_singular_patch_est_ = 1);
 
         /// @brief Using a closed curve, computes the patches, and initializes their bounding boxes
         /// @tparam N The number of points to use in the bounding box computation
@@ -33,18 +52,18 @@ class ForwardMap {
         /// @param wavelengths_per_patch Number of wavelengths per patch
         /// @param wavenumber Wavenumber for the problem
         /// @return A vector of patches, which can be passed into the forward map
-        std::vector<Patch<Nroot>> init_points_and_patches(ClosedCurve& curve, 
+        void init_points_and_patches(ClosedCurve& curve, 
                 double wavelengths_per_patch, double wavenumber);
 
-
-        // Because the xs, and ys are dependent on the number of points per patch,
-        // this function belongs in the Forward map
-        void compute_near_singular_points();
+        ///@brief Compute for each patch the point indices of the near singular points
+        /// Note: To me this belongs here, and not in some geometry module because it depends
+        /// on the number of discretization points in each patch
+        void determine_patch_near_singular_points();
 
         // Loop through the patches and compute the precomputations for each patch
         void compute_precomputations();
 
-        Eigen::MatrixXcd single_patch_compute_precomputations(const Patch<N>& patch, int npoints, double p);
+        //Eigen::MatrixXcd single_patch_compute_precomputations(const Patch<Np>& patch, int npoints, double p);
 
         // Other functions to implement:
         // Compute intensities: Take in the density and multiply by the correct weights

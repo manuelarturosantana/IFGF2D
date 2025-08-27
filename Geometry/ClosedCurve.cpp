@@ -34,6 +34,8 @@ void ClosedCurve::ref_seg_len(double a, double b, double size_lim, std::vector<d
 
 std::vector<double> ClosedCurve::compute_patch_lims(double wavelengths_per_patch,
     double wavenumber) {
+    
+    this->set_integration_points();
     double wavelength = 2 * M_PI / wavenumber;
     // Compute the length of the curve via integration
     double curve_len = comp_segement_length(0, 2*M_PI);
@@ -55,6 +57,8 @@ std::vector<double> ClosedCurve::compute_patch_lims(double wavelengths_per_patch
 
         ref_seg_len(left_endpoint, right_endpoint, wavelength * wavelengths_per_patch, patch_lims);
     } 
+
+    this->integration_data_cleanup();
 
     return patch_lims;
 }
