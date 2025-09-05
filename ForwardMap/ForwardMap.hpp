@@ -44,9 +44,10 @@ class ForwardMap {
         double delta_; // Rectangular Polar Near Singularity Parameter
         int near_singular_patch_est_; // Assume all near singular points are in patches only 1 away from this
         double p_; // Parameter in rectangular polar change of variables.
-        double gss_tol_;
+        double eta_ = 0.0;
 
-        const num_ns_integral_points = 20; // Number of points to use on each side of the near 
+
+        const num_ns = 20; // Number of points to use on each side of the near 
                                            // singular integration. Not a parameter to set for now
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
@@ -54,6 +55,9 @@ class ForwardMap {
 
         std::vector<double> fejer_nodes_;
         std::vector<double> fejer_weights_;
+
+        Eigen::VectorXd fejer_nodes_ns_;
+        Eigen::VectorXd fejer_weights_ns_;
 
         
         ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
@@ -82,9 +86,11 @@ class ForwardMap {
         /// @brief Given a patch compute the precomputations corresponding to the weights.
         /// Works if the point is not on the endpoints 
         /// @param patch The patch to integrate over
-        /// @param tval The in patch t-value of the integration point
+        /// @param tsing The in patch t-value of the integration point in the interval [t1,t2]
+        ///              which relates to the patch parameterization.
         /// @return An eigen vector corresponding to the weights.
-        Eigen::VectorXcd single_patch_point_mid_compute_precomputations(const Patch<Np>& patch, double tsing);
+        Eigen::VectorXcd single_patch_point_mid_compute_precomputations
+            (const Patch<Np>& patch, double tsing, double wave_number);
 
 
         // Other functions to implement:
