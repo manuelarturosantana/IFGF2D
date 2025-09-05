@@ -6,9 +6,10 @@
 #include "../../Geometry/ClosedCurve.hpp"
 #include "../../utils/BrentsMethod.hpp"
 
-
+// Appears to be working :).
+// Can be used to test individual patches.
 int main() {
-    double delta = 0.001;
+    double delta = 0.1;
     double k     = 5;
     double wave_lengths_per_patch = 1.0;
 
@@ -24,14 +25,12 @@ int main() {
     // std::cout << "Min = " << out[0] << " f(min) = " << out[1] << std::endl;
 
     
-
-
-
     Kite kite;
+    constexpr int num_points = 10;
+    ForwardMap<num_points, FormulationType::SingleLayer, num_points> FM(delta, kite, wave_lengths_per_patch, k);
 
-    ForwardMap<10, 10> FM(delta, kite, wave_lengths_per_patch, k);
-
-     //Prints the matlab code to plot the patches and bounding boxes
+    // Prints the matlab code to plot the patches and bounding boxes
+    //    for (size_t i = 0; i < 1; i++) {
       for (size_t i = 0; i < FM.num_patches_; i++) {
         std::cout 
         << "patch = curve.x_t(linspace( " << FM.patches_[i].t1 << "," << FM.patches_[i].t2 <<")); \n" 
@@ -60,14 +59,15 @@ int main() {
     std::cout << "];" << std::endl;
     std::cout << "plot(x,y,'*')" << std::endl;
 
-    for (int pind = 0; pind < 1; pind++) {
-    // for (int pind = 0; pind < FM.num_patches_; pind++) {
+
+    // for (int pind = FM.num_patches_  - 1 ; pind < FM.num_patches_; pind++) {
+    for (int pind = 0; pind < FM.num_patches_; pind++) {
         for (size_t ns_ind = 0; ns_ind < FM.patches_[pind].near_singular_point_indices_.size(); ns_ind++) {
             double tval = FM.patches_[pind].near_singular_point_ts_[ns_ind];
  
             std::cout << 
-            " xval = " << FM.xs_[FM.patches_[pind].near_singular_point_indices_[ns_ind]] << "\n"
-            << "xp = curve.x_t(xval)" << "\n"
+            " tval = " << tval << "\n"
+            << "xp = curve.x_t(tval)" << "\n"
             << "plot(xp(1), xp(2),'^')" << std::endl;
         }
 

@@ -5,6 +5,7 @@
 
 
 #include "../Geometry/Patch.hpp"
+#include "GreenFunctions.hpp"
 
 /*
 Potential Future Improvements
@@ -18,12 +19,20 @@ Potential Future Improvements
 
 */
 
+/* 
+Current assumptions to watch out for
+    1. The number of points in each patch is the same. Will need to change the dermination
+        of the near singular points if this changes
+
+*/
+
 
 
 /// @brief Class which computes the forward map of the greens function operator
 /// @tparam Np Number of points to use per patch for integration
+/// @tparam Formulation: Which Green's function formulation to use.
 /// @tparam Nroot number of points to used in bounding box computation of patches
-template <int Np, int Nroot = 10>
+template <int Np, FormulationType Formulation, int Nroot = 10>
 class ForwardMap {
     public:
         std::vector<Patch<Nroot>> patches_; 
@@ -34,7 +43,11 @@ class ForwardMap {
 
         double delta_; // Rectangular Polar Near Singularity Parameter
         int near_singular_patch_est_; // Assume all near singular points are in patches only 1 away from this
+        double p_; // Parameter in rectangular polar change of variables.
         double gss_tol_;
+
+        const num_ns_integral_points = 20; // Number of points to use on each side of the near 
+                                           // singular integration. Not a parameter to set for now
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
         std::vector<double> ys_;
@@ -44,7 +57,7 @@ class ForwardMap {
 
         
         ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
-            double patch_split_wavenumber, int near_singular_patch_est_ = 1);
+            double patch_split_wavenumber, int near_singular_patch_est_ = 1, double p_ = 6);
 
         /// @brief Using a closed curve, computes the patches, and initializes their bounding boxes
         /// @tparam N The number of points to use in the bounding box computation
@@ -59,11 +72,20 @@ class ForwardMap {
         /// Note: To me this belongs here, and not in some geometry module because it depends
         /// on the number of discretization points in each patch
         void determine_patch_near_singular_points();
+        
+
+        
 
         // Loop through the patches and compute the precomputations for each patch
         void compute_precomputations();
+        
+        /// @brief Given a patch compute the precomputations corresponding to the weights.
+        /// Works if the point is not on the endpoints 
+        /// @param patch The patch to integrate over
+        /// @param tval The in patch t-value of the integration point
+        /// @return An eigen vector corresponding to the weights.
+        Eigen::VectorXcd single_patch_point_mid_compute_precomputations(const Patch<Np>& patch, double tsing);
 
-        //Eigen::MatrixXcd single_patch_compute_precomputations(const Patch<Np>& patch, int npoints, double p);
 
         // Other functions to implement:
         // Compute intensities: Take in the density and multiply by the correct weights
@@ -73,17 +95,5 @@ class ForwardMap {
             // Eventually going to include IFGF
 };
 
-
-
-// template <int N = 10>
-// std::vector<Patch<N>> ForwardMap::initialze_patches(ClosedCurve& curve, double wavelengths_per_patch, double wavenumber) {
-//     std::vector<double> patch_lims = curve.compute_patch_lims(wavelengths_per_patch, wavenumber);
-//     std::vector<Patch<N>> patches; patches.reserve(patch_lims.size() - 1);
-
-//     for (size_t ii = 0; ii < patch_lims.size() - 1; ii++) {
-//         patches.emplace_back(patch_lims[ii], patch_lims[ii + 1], curve, 0.1);
-//         patches[i].comp_bounding_box(); 
-//     }
-// }
 
 #include "ForwardMap.tpp"
