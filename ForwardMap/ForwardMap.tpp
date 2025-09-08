@@ -10,7 +10,7 @@
 
 template <int Np, FormulationType Formulation, int Nroot>
 ForwardMap<Np, Formulation, Nroot>::ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
-    double patch_split_wavenumber, int near_singular_patch_est, double p_) :
+    double patch_split_wavenumber, int near_singular_patch_est, double p) :
         delta_(delta), curve_(curve), near_singular_patch_est_(near_singular_patch_est), p_(p)
 {   
     // Precompute Quadrature nodes and weights for non-singular integration
@@ -18,7 +18,7 @@ ForwardMap<Np, Formulation, Nroot>::ForwardMap(double delta, ClosedCurve& curve,
     fejerquadrature1(fejer_nodes_, fejer_weights_, Np);
 
     // Precopmute quadrature nodes and weights for singular integration
-    fejer_nodes_ns_ = std::vector<double>(num_ns); fejer_weights_ns_ = std::vector<double>(num_ns);
+    fejer_nodes_ns_ = Eigen::ArrayXd(num_ns); fejer_weights_ns_ =  Eigen::ArrayXd(num_ns);
     fejerquadrature1(fejer_nodes_ns_, fejer_weights_ns_, num_ns);
 
     
@@ -150,117 +150,88 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_mid_comp
     Eigen::VectorXcd out_precomps = Eigen::VectorXcd::Zero(Np);
 
     // Set up vector of Cheb left and Cheb right
-    Eigen::ArrayXd cheb_left_nm1  =  Eigen::ArrayXd::Constant(num_ns, 1.0);  
-    Eigen::ArrayXd cheb_right_nm1 =  Eigen::ArrayXd::Constant(num_ns, 1.0); 
-    Eigen::ArrayXd cheb_left_n(num_ns);    Eigen::ArrayXd cheb_right_n(num_ns);
-    Eigen::ArrayXd cheb_left_np1(num_ns);  Eigen::ArrayXd cheb_right_np1(num_ns);
+    Eigen::ArrayXd cheb_nm1  =  Eigen::ArrayXd::Constant(num_ns, 1.0);  
+    Eigen::ArrayXd cheb_n(num_ns);    Eigen::ArrayXd cheb_right_n(num_ns);
+    Eigen::ArrayXd cheb_np1(num_ns);  Eigen::ArrayXd cheb_right_np1(num_ns);
 
-    // Store the x values needed to update the Chebyshev recurrence
-    Eigen::ArrayXd tl_cov(num_ns);  Eigen::ArrayXd tr_cov(num_ns);
+    // Store the change of variables evaluated at the cheb points
+    Eigen::ArrayXd xi_alpha(num_ns);
     
-    // Change of variables and curve jacobians. 
-    Eigen::ArrayXd w_left(num_ns), w_right(num_ns), wp_left(num_ns), 
-    wp_right(num_ns), cj_left(num_ns), cj_right(num_ns);;
+    // Change of variablesfrom [t1,t2] to [-1,1] cov and curve jacobians. 
+    Eigen::ArrayXd g_cov(num_ns), curve_jac(num_ns);
     
     // Set up Green function evaluations on the left and right
-    Eigen::VectorXcd  green_left(num_ns), green_right(np);
+    Eigen::ArrayXcd  green(num_ns);
+    
+    // Cartesean coordinates of the singular point.
+    const double xsing = curve_.xt(tsing); const double ysing = curve_.yt(tsing);
+    
+    // Location in [-1,1] of the singularity
+    double alpha = ab2cd(tsing,-1.0, 1.0, patch.t1, patch.t2);
 
-    const double a = patch.t1; const double b = patch.t2;
-    const double xsing = curve_.xt(tsing); const double ysing = curve.yt(tsing);
-
+    // 0 for middle. -1 for left, 1 for right.
+    int sing_loc;
+    
+    // This check to see if it is on the enpoint is ad hoc for now. Perhaps it needs to be tighter
+    if (std::abs(-1.0 - alpha) < 1e-5) { 
+        sing_loc = -1;
+    } else if (std::abs(1.0 - alpha) < 1e-5) {
+        sing_loc = 1;
+    } else {
+        sing_loc = 0;
+    }
+    
+    // Precompute all values which don't depend on the Chebyshev polynomials.
     for (int ii = 0; ii < num_ns; ii++) {
-        const double t_left  = (fejer_nodes_ns_(ii) + 1.0) / 2.0;
-        const double t_right = (fejer_weights_ns_(ii) - 1.0) / 2.0;
+        
+        // Compute the singularity resolving change of variables.
+        if (sing_loc == 0) {
+            xi_alpha(ii) = xi_cov_center(fejer_nodes_ns_(ii), alpha, p_);
+        } else if (sing_loc == -1) {
+            xi_alpha(ii) = xi_cov_left(fejer_nodes_ns_(ii), p_);
+        } else {
+            xi_alpha(ii) = xi_cov_right(fejer_nodes_ns_(ii), p_);
+        }
 
-        w_left(ii) =  w_cov(-t_left, p_);  wp_left(ii) = wp_cov(-t_left, p_);    
-        w_right(ii) = w_cov(t_right, p_);  wp_right(ii) = wp_cov(t_right, p_);
+        cheb_left_n(ii) = xi_alpha(ii);
 
-        tl_cov(ii) = tsing - ((tsing - a) * w_left(ii));
-        tr_cov(ii) = tsing + ((b - tsing) * w_right(ii));
+        // Compute the change of variables from [-1,1] to t1, t2;
+        double g_xi_alpha = ab2cd(xi_alpha(ii), -1.0, 1.0, patch.t1, patch.t2);
 
+        const double xt = curve_.xt(g_xi_alpha);
+        const double yt = curve_.xt(g_xi_alpha);
 
-        cheb_left_n(ii) = tl_cov(ii); cheb_right_n(ii) = tr_cov(ii);
+        // Compute the curve Jacobian
+        Eigen::Vector2d normal = curve_.normal_t(g_xi_alpha);
+        curve_jac(ii) = normal.norm();
 
-        // Left Side
-        const double xtl = curve.xt(ab2cd(tl_cov(ii) ,-1,1,a,b));
-        const double ytl = curve.xt(ab2cd(tl_cov(ii) ,-1,1,a,b));
-
-        Eigen::Vector2d normal_l = curve_.normal_t(tl_cov(ii) );
-        cj_left(ii) = normal_l.norm();
-        normal_l /= normal_l.norm();
-
-        GF<Formulation>(xsing, ysing, xtl, ytl, normal_l(0), normal_l(1),
-        eta_, wave_number, green_left.data() + ii);
-
-        // Right Side
-        const double xtr = curve.xt(ab2cd(tr_cov(ii),-1,1,a,b));
-        const double ytr = curve.xt(ab2cd(tr_cov(ii),-1,1,a,b));
-
-        Eigen::Vector2d normal_r = curve_.normal_t(tr_cov(ii));
-        cj_right(ii) = normal_r.norm();
-        normal_r /= normal_r.norm();
-
-        GF<Formulation>(xsing, ysing, xtr, ytr, normal_r(0), normal_r(1),
-        eta_, wave_number, green_right.data() + ii)
+        // Compute the Green's Function
+        normal       /= curve_jac(ii);
+        green(ii) = GF<Formulation>(xsing, ysing, xt, yt, normal(0), normal(1),
+        eta_, wave_number);
     }
 
-    Eigen::ArrayXcd integrand_wo_cheb_l = ((tsing - a) / 2.0) * fejer_weights_ns_.array() * 
-                            green_left * cj_left *  wp_left;
-    Eigen::ArrayXcd integrand_wo_cheb_r = ((b - tsing) / 2.0) * fejer_weights_ns_.array() * 
-                            green_right * cj_right * wp_right;
-
-  
+    Eigen::ArrayXcd integrand_wo_cheb = 
+        ((patch.t2 - patch.t1) / (2.0)) * green * curve_jac * xi_alpha * fejer_weights_ns_;
 
     // No need to element wise multiply by all ones.
-    out_precomps(0) += integrand_wo_cheb_l.sum();
-    out_precomps(0) += integrand_wo_cheb_r.sum();
+    out_precomps(0) = integrand_wo_cheb.sum();
 
-    out_precomps(1) += (integrand_wo_cheb_l * cheb_left_n).sum();
-    out_precomps(1) += (integrand_wo_cheb_r * cheb_right_n).sum();
+    out_precomps(1) = (integrand_wo_cheb * cheb_n).sum();
 
     for (int ii = 2; ii < Np; ii++) {
-        cheb_left_np1 = 2.0 * tl_cov  * cheb_left_n - cheb_left_nm1;
-        cheb_right_np1 = 2.0 * tr_cov  * cheb_right_n - cheb_right_nm1;
+        cheb_np1 = 2.0 * xi_alpha  * cheb_n - cheb_nm1;
 
-        out_precomps(ii) += (integrand_wo_cheb_l * cheb_left_np1).sum();
-        out_precomps(ii) += (integrand_wo_cheb_r * cheb_right_np1).sum();
+        out_precomps(ii) += (integrand_wo_cheb * cheb_np1).sum();
 
         // Update the Chebyshev polynomials
-        cheb_left_nm1.swap(cheb_left_n);   cheb_left_n.swap(cheb_left_np1);
-        cheb_right_nm1.swap(cheb_right_n); cheb_right_n.swap(cheb_right_np1);
+        cheb_left_nm1.swap(cheb_n);   
+        cheb_left_n.swap(cheb_np1);
     }
 
+    return out_precomps;
+
 }
-
-// double near_sing_int(const std::function<double (double)>& f, double a, double b, double x_sing, 
-//         int N, double p) {
-
-//     Eigen::VectorXd nodes(N), weights(N); 
-
-//     fejerquadrature1(nodes, weights, N);
-
-//     Eigen::VectorXd w_left(N), w_right(N), wp_left(N), wp_right(N), fs_left(N), fs_right(N);
-//     for (int ii = 0; ii < N; ii++) {
-//         const double x_left  = (nodes(ii) + 1.0) / 2.0;
-//         const double x_right = (nodes(ii) - 1.0) / 2.0;
-
-//         w_left(ii) =  w_cov(-x_left, p);  wp_left(ii) = wp_cov(-x_left, p);    
-//         w_right(ii) = w_cov(x_right, p);  wp_right(ii) = wp_cov(x_right,p);
-
-//         fs_left(ii) = f(x_sing - ((x_sing - a) * w_left(ii)));
-//         fs_right(ii) = f(x_sing + ((b - x_sing) * w_right(ii)));
-//     }
-
-   
-//     fs_left = ((x_sing - a) / 2.0) * fs_left;
-//     fs_right = ((b - x_sing) / 2.0) * fs_right;
-
-//     return (weights.array() * fs_left.array() * wp_left.array()).sum() 
-//         + (weights.array() * fs_right.array() * wp_right.array()).sum();
-
-// }
-
-
 
 template <int Np, FormulationType Formulation, int Nroot>
 void ForwardMap<Np, Formulation, Nroot>::compute_precomputations() {

@@ -3,6 +3,9 @@
 #include <vector>
 #include <cmath>
 #include <functional>
+#include <type_traits>
+
+
 #include <iostream>
 #include <Eigen/Dense>
 
@@ -39,7 +42,9 @@ void inline fejerquadrature1(std::vector<double>& nodes, std::vector<double>& we
 
 }
 
-void inline fejerquadrature1(Eigen::VectorXd& nodes, Eigen::VectorXd& weights, int N)
+template <typename T>
+typename std::enable_if<std::is_same<T, Eigen::VectorXd>::value || std::is_same<T, Eigen::ArrayXd>::value, void>::type
+ inline fejerquadrature1(T& nodes, T& weights, int N)
 {
 
     for (int i = 0; i < N; i++) {
@@ -95,16 +100,67 @@ double inline wp_cov_base(double t, double p) {
      return val;
 }
 
-/// normalized form of the w change of variables. t in [-1,1]
-/// (1/pi)w(pi t + pi)
-double inline w_cov(double t, double p) {
-    return M_1_PI * w_cov_base(M_PI * t + M_PI, p);
+// Taken from https://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
 }
 
-/// Derivative of the normalized form of the w change of variables
-double inline wp_cov(double t, double p) {
-    return wp_cov_base(M_PI * t + M_PI, p);
+
+/// @brief The xi change of variables used to cancel the singularities.
+/// TODOSPEEDUP: If this doesn't get vectorized it may be too slow. Eigen could help vectorize this.
+///              Also could combine the computation of the value and the change of variables to not recompute M_PI*std::abs(t) etc.
+///              Althought I suspect that this latter speedup will be nearly unoticable.
+/// @param t Value in [-1, 1]
+/// @param alpha Value of the singularity in (-1,1)
+/// @param p W change of variables parameter
+/// @return The change of variables parameter.
+double inline xi_cov_center(double t, double alpha, double p) {
+    return alpha + ((sgn(t) - alpha) / M_PI) * w_cov_base(M_PI * std::abs(t), p);
+} 
+
+// alpha = 1
+double inline xi_cov_right(double t, double p) {
+    return 1.0 - ((2.0 / M_PI) * w_cov_base(M_PI * std::abs((t - 1.0) / 2.0),p));
 }
+
+// alpha = -1;
+double inline xi_cov_left(double t,  double p) {
+    return -1.0 + ((-2.0 / M_PI) * w_cov_base(M_PI * std::abs((t + 1.0) / 2.0),p));
+}
+
+//////////////////////////////// derivatives of the change of variables //////////////////
+double inline dxi_cov_center(double t, double alpha, double p) {
+    return (1.0 - alpha * sgn(t)) * wp_cov_base(M_PI * std::abs(t), p);
+} 
+
+// alpha = 1
+double inline dxi_cov_right(double t, double p) {
+    double temp = (t - 1.0) / 2.0;
+    return -1.0 * wp_cov_base(M_PI * std::abs(temp), p) * sgn(temp);
+}
+
+// alpha = -1;
+double inline dxi_cov_left(double t,  double p) {
+    double temp = (t + 1.0) / 2.0;
+    return -1.0 * wp_cov_base(M_PI * std::abs(temp),p) * sgn(temp);
+}
+
+
+
+
+
+/// normalized form of the w change of variables. t in [-1,1]
+/// (1/pi)w(pi t + pi) Used in Sabhrants splitting code, but for now not used here.
+// double inline w_cov(double t, double p) {
+//     return M_1_PI * w_cov_base(M_PI * t + M_PI, p);
+// }
+
+// /// Derivative of the normalized form of the w change of variables
+// double inline wp_cov(double t, double p) {
+//     return wp_cov_base(M_PI * t + M_PI, p);
+// }
+
+
 
 /// @brief Prototype function for computing a near singular integral
 /// @param f function to be integrated in the interval a b 

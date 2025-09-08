@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <cmath>
+#include <Eigen/Dense>
 
 #include "../utils/Quadrature.hpp"
 
@@ -71,7 +72,16 @@ class ClosedCurve {
    
         ClosedCurve(int num_integration_points = 200) : num_integration_points(num_integration_points) {
             set_integration_points();
-        }  
+        }
+        
+        // Return an eigen vector of the normal (not unit), assuming a counter clockwise oriented curve.
+        Eigen::Vector2d inline normal_t(double t) {
+            Eigen::Vector2d normal;
+            normal(0) = ypt(t);
+            normal(1) = -xpt(t);
+            return normal;
+        };
+        
 };
 
 class Circle : public ClosedCurve { 

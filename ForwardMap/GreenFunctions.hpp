@@ -29,33 +29,33 @@ enum class FormulationType {
 /// @param ny The y coordiante of the unit normal with respect ot p2
 /// @param coupling_parameter Couple parameter, only used if Combined is chosen
 /// @param wavenumber Wave number
-/// @param solution Output solution
+/// @return The value of the Green's function.
 
 template<FormulationType Formulation>
-void inline GF(const double p1x, const double p1y,
+std::complex<double> inline GF(const double p1x, const double p1y,
         const double p2x, const double p2y,
         const double nx, const double ny,
-        const double coupling_parameter, std::complex<double> wavenumber,
-        std::complex<double>& solution)
+        const double coupling_parameter, std::complex<double> wavenumber)
 {
 
-    double solution_real, solution_imag;
+    std::complex<double> solution;
 
     const double norm_diff = std::sqrt((p2x - p1x)*(p2x - p1x) + (p2y - p1y)*(p2y - p1y));
 
     if (norm_diff < 1e-14) {
 
-        solution_real = 0.0;
-        solution_imag = 0.0;
+        // Solution is initialized to zero
+        solution = std::complex<double>(0.0,0.0);
 
     } else {   
 
-        static constexpr double tmpfactor = std::complex<double>(0.0,1.0)/4.0;
-        static constexpr std::complex<double> c_unit (0.0,1.0);
+        // Static means the variables retain their values between function calls!!!
+        static std::complex<double> tmpfactor = std::complex<double>(0.0,1.0)/4.0;
+        static std::complex<double> c_unit (0.0,1.0);
 
         // constexpr means only the relevant branch is compiled
         if constexpr (Formulation == FormulationType::SingleLayer) {
-            solution = tmpfactor * sp_bessel::hankelH1(0, wavenumber_ * distance);
+            solution = tmpfactor * sp_bessel::hankelH1(0, wavenumber * norm_diff);
 
         } else if constexpr (Formulation == FormulationType::DoubleLayer) {
 
@@ -74,20 +74,22 @@ void inline GF(const double p1x, const double p1y,
 
             // }            
 
-        } else if constexpr (Formulation == FormulationType::Combined){
-            std::complex<double> solution_S = tmpfactor * sp_bessel::hankelH1(0, wavenumber_ * distance);
+        // } else if constexpr (Formulation == FormulationType::Combined){
+        //     std::complex<double> solution_S = tmpfactor * sp_bessel::hankelH1(0, wavenumber * distance);
 
-            // Compute beta = < r, n > / |r|^2
-        const double rDotNorm = (p1x - p2x) * nx - (p1y - p2y) * ny;
-             std::complex<double> solution_D = tmpfactor * wavenumber * sp_bessel::hankelH1(1, wavenumber * norm_diff) 
-                        * rDotNorm;
-             solution = solution_D - c_unit * coupling_parameter * solution_S;
+        //     // Compute beta = < r, n > / |r|^2
+        // const double rDotNorm = (p1x - p2x) * nx - (p1y - p2y) * ny;
+        //      std::complex<double> solution_D = tmpfactor * wavenumber * sp_bessel::hankelH1(1, wavenumber * norm_diff) 
+        //                 * rDotNorm;
+        //      solution = solution_D - c_unit * coupling_parameter * solution_S;
 
-        } else constexpr {
-            std::cout << "GF unknown layer potential specification"
+        } else {
+            std::cout << "GF unknown layer potential specification";
             std::exit(1);
         }
 
     }
+
+    return solution;
 
 }

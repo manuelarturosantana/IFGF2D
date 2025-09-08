@@ -47,7 +47,7 @@ class ForwardMap {
         double eta_ = 0.0;
 
 
-        const num_ns = 20; // Number of points to use on each side of the near 
+        const int num_ns = 40; // Number of points to use on each side of the near 
                                            // singular integration. Not a parameter to set for now
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
@@ -56,12 +56,12 @@ class ForwardMap {
         std::vector<double> fejer_nodes_;
         std::vector<double> fejer_weights_;
 
-        Eigen::VectorXd fejer_nodes_ns_;
-        Eigen::VectorXd fejer_weights_ns_;
+        Eigen::ArrayXd fejer_nodes_ns_;
+        Eigen::ArrayXd fejer_weights_ns_;
 
         
         ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
-            double patch_split_wavenumber, int near_singular_patch_est_ = 1, double p_ = 6);
+            double patch_split_wavenumber, int near_singular_patch_est_ = 1, double p = 6);
 
         /// @brief Using a closed curve, computes the patches, and initializes their bounding boxes
         /// @tparam N The number of points to use in the bounding box computation
@@ -88,7 +88,7 @@ class ForwardMap {
         /// @param patch The patch to integrate over
         /// @param tsing The in patch t-value of the integration point in the interval [t1,t2]
         ///              which relates to the patch parameterization.
-        /// @return An eigen vector corresponding to the weights.
+        /// @return The precomutations as a vector for each point
         Eigen::VectorXcd single_patch_point_mid_compute_precomputations
             (const Patch<Np>& patch, double tsing, double wave_number);
 
