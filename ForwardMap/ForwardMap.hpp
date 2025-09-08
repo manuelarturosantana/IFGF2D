@@ -47,7 +47,7 @@ class ForwardMap {
         double eta_ = 0.0;
 
 
-        const int num_ns = 40; // Number of points to use on each side of the near 
+        const int num_ns = 200; // Number of points to use on each side of the near 
                                            // singular integration. Not a parameter to set for now
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
@@ -88,9 +88,10 @@ class ForwardMap {
         /// @param patch The patch to integrate over
         /// @param tsing The in patch t-value of the integration point in the interval [t1,t2]
         ///              which relates to the patch parameterization.
+        /// @param wave_number The wave number for this use of the solver.
         /// @return The precomutations as a vector for each point
-        Eigen::VectorXcd single_patch_point_mid_compute_precomputations
-            (const Patch<Np>& patch, double tsing, double wave_number);
+        Eigen::VectorXcd single_patch_point_compute_precomputations
+            (const Patch<Np>& patch, double tsing, std::complex<double> wave_number);
 
 
         // Other functions to implement:

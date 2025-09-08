@@ -143,19 +143,19 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
 }
 
 template <int Np, FormulationType Formulation, int Nroot>
-Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_mid_compute_precomputations
-    (const Patch<Np>& patch, double tsing, double wave_number) {
+Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_precomputations
+    (const Patch<Np>& patch, double tsing, std::complex<double> wave_number) {
 
     // Setup output vector
-    Eigen::VectorXcd out_precomps = Eigen::VectorXcd::Zero(Np);
+    Eigen::VectorXcd out_precomps(Np);
 
     // Set up vector of Cheb left and Cheb right
     Eigen::ArrayXd cheb_nm1  =  Eigen::ArrayXd::Constant(num_ns, 1.0);  
     Eigen::ArrayXd cheb_n(num_ns);    Eigen::ArrayXd cheb_right_n(num_ns);
     Eigen::ArrayXd cheb_np1(num_ns);  Eigen::ArrayXd cheb_right_np1(num_ns);
 
-    // Store the change of variables evaluated at the cheb points
-    Eigen::ArrayXd xi_alpha(num_ns);
+    // Store the change of variables, and its derivative evaluated at the cheb points
+    Eigen::ArrayXd xi_alpha(num_ns), dxi_alpha(num_ns);
     
     // Change of variablesfrom [t1,t2] to [-1,1] cov and curve jacobians. 
     Eigen::ArrayXd g_cov(num_ns), curve_jac(num_ns);
@@ -165,9 +165,12 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_mid_comp
     
     // Cartesean coordinates of the singular point.
     const double xsing = curve_.xt(tsing); const double ysing = curve_.yt(tsing);
+    //DEUBG
+    std::cout << "xsing " << xsing << std::endl;
+    std::cout << "ysing " << ysing << std::endl;
     
     // Location in [-1,1] of the singularity
-    double alpha = ab2cd(tsing,-1.0, 1.0, patch.t1, patch.t2);
+    double alpha = ab2cd(tsing, patch.t1, patch.t2, -1.0, 1.0);
 
     // 0 for middle. -1 for left, 1 for right.
     int sing_loc;
@@ -186,21 +189,24 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_mid_comp
         
         // Compute the singularity resolving change of variables.
         if (sing_loc == 0) {
-            xi_alpha(ii) = xi_cov_center(fejer_nodes_ns_(ii), alpha, p_);
+            xi_alpha(ii)  = xi_cov_center(fejer_nodes_ns_(ii), alpha, p_);
+            dxi_alpha(ii) = dxi_cov_center(fejer_nodes_ns_(ii), alpha, p_);
         } else if (sing_loc == -1) {
-            xi_alpha(ii) = xi_cov_left(fejer_nodes_ns_(ii), p_);
+            xi_alpha(ii)  = xi_cov_left(fejer_nodes_ns_(ii), p_);
+            dxi_alpha(ii) = dxi_cov_left(fejer_nodes_ns_(ii), p_);
         } else {
-            xi_alpha(ii) = xi_cov_right(fejer_nodes_ns_(ii), p_);
+            xi_alpha(ii)  = xi_cov_right(fejer_nodes_ns_(ii), p_);
+            dxi_alpha(ii) = dxi_cov_right(fejer_nodes_ns_(ii), p_);
         }
 
-        cheb_left_n(ii) = xi_alpha(ii);
+        cheb_n(ii) = xi_alpha(ii);
 
         // Compute the change of variables from [-1,1] to t1, t2;
         double g_xi_alpha = ab2cd(xi_alpha(ii), -1.0, 1.0, patch.t1, patch.t2);
 
         const double xt = curve_.xt(g_xi_alpha);
-        const double yt = curve_.xt(g_xi_alpha);
-
+        const double yt = curve_.yt(g_xi_alpha);
+  
         // Compute the curve Jacobian
         Eigen::Vector2d normal = curve_.normal_t(g_xi_alpha);
         curve_jac(ii) = normal.norm();
@@ -212,7 +218,7 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_mid_comp
     }
 
     Eigen::ArrayXcd integrand_wo_cheb = 
-        ((patch.t2 - patch.t1) / (2.0)) * green * curve_jac * xi_alpha * fejer_weights_ns_;
+        ((patch.t2 - patch.t1) / (2.0)) * green * curve_jac * dxi_alpha * fejer_weights_ns_;
 
     // No need to element wise multiply by all ones.
     out_precomps(0) = integrand_wo_cheb.sum();
@@ -220,13 +226,13 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_mid_comp
     out_precomps(1) = (integrand_wo_cheb * cheb_n).sum();
 
     for (int ii = 2; ii < Np; ii++) {
-        cheb_np1 = 2.0 * xi_alpha  * cheb_n - cheb_nm1;
+        cheb_np1 = (2.0 * xi_alpha  * cheb_n) - cheb_nm1;
 
-        out_precomps(ii) += (integrand_wo_cheb * cheb_np1).sum();
+        out_precomps(ii) = (integrand_wo_cheb * cheb_np1).sum();
 
         // Update the Chebyshev polynomials
-        cheb_left_nm1.swap(cheb_n);   
-        cheb_left_n.swap(cheb_np1);
+        cheb_nm1.swap(cheb_n);   
+        cheb_n.swap(cheb_np1);
     }
 
     return out_precomps;

@@ -85,8 +85,9 @@ double inline vp_func(double t, double p) {
 
 /// base form of w change of variables. t \in [0,2\pi]
 double inline w_cov_base(double t, double p) {
-    double val = 2.0 * M_PI * std::pow(v_func(t, p),p);
-    val /= (std::pow(v_func(t,p),p) + std::pow(v_func(2 * M_PI - t, p),p));
+    double vp = std::pow(v_func(t, p), p);
+    double val = 2.0 * M_PI * vp;
+    val /= (vp + std::pow(v_func(2 * M_PI - t, p),p));
     return val;
 }
 
