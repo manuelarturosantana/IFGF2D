@@ -165,9 +165,6 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_
     
     // Cartesean coordinates of the singular point.
     const double xsing = curve_.xt(tsing); const double ysing = curve_.yt(tsing);
-    //DEUBG
-    std::cout << "xsing " << xsing << std::endl;
-    std::cout << "ysing " << ysing << std::endl;
     
     // Location in [-1,1] of the singularity
     double alpha = ab2cd(tsing, patch.t1, patch.t2, -1.0, 1.0);
@@ -177,6 +174,8 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_
     
     // This check to see if it is on the enpoint is ad hoc for now. Perhaps it needs to be tighter
     if (std::abs(-1.0 - alpha) < 1e-5) { 
+        // DEBUG
+        std::cout << "Using left change of variables" << std::endl;
         sing_loc = -1;
     } else if (std::abs(1.0 - alpha) < 1e-5) {
         sing_loc = 1;

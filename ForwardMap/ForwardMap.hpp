@@ -47,8 +47,7 @@ class ForwardMap {
         double eta_ = 0.0;
 
 
-        const int num_ns = 200; // Number of points to use on each side of the near 
-                                           // singular integration. Not a parameter to set for now
+        const int num_ns = 40; // Number of points to use for the near singular integration. Not a parameter to set for now
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
         std::vector<double> ys_;
@@ -61,7 +60,7 @@ class ForwardMap {
 
         
         ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
-            double patch_split_wavenumber, int near_singular_patch_est_ = 1, double p = 6);
+            double patch_split_wavenumber, int near_singular_patch_est_ = 1, double p = 4);
 
         /// @brief Using a closed curve, computes the patches, and initializes their bounding boxes
         /// @tparam N The number of points to use in the bounding box computation
