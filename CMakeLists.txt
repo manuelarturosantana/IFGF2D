@@ -78,9 +78,9 @@ target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
 # target_compile_options(ComputeBoundingBoxTests PRIVATE ${COMMON_COMPILE_FLAGS})
 
 # ################################ UTILS TESTS #############################################
-# add_executable(Cheb1d_test tests/utils/Cheb1d_test)
-# # target_include_directories(Cheb1d_test PRIVATE ${COMMON_INCLUDE_DIRS})
-# target_compile_options(Cheb1d_test PRIVATE ${COMMON_COMPILE_FLAGS})
+add_executable(Cheb1d_test tests/utils/Cheb1d_test)
+target_include_directories(Cheb1d_test PRIVATE ${COMMON_INCLUDE_DIRS})
+target_compile_options(Cheb1d_test PRIVATE ${COMMON_COMPILE_FLAGS})
 
 # add_executable(SingularIntegral tests/utils/SingularIntegral)
 # target_compile_options(SingularIntegral PRIVATE ${COMMON_COMPILE_FLAGS})

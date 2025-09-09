@@ -133,6 +133,38 @@ namespace Cheb1D {
         return coeffs;
     }
 
+    // Eigen overload used in the rectangular polar method
+    template<int Np>
+    Eigen::VectorXcd interp_1d(const Eigen::Ref<Eigen::VectorXcd> fvals) {
+        // Do the first two iterations so there is not branching in the loop.
+        
+        Eigen::VectorXcd coeffs = Eigen::VectorXcd::Zero(Np);
+
+        std::array<std::array<double, Np>, Np > cheb_vals = setup_multiple_Tn<Np>();
+
+        // Loop over the x values to compute the first two coefficients
+        for (int k = 0; k < Np; k ++) {
+            coeffs(0) += fvals(k);
+            coeffs(1) += fvals(k) * cheb_vals[1][k];
+        }
+        coeffs(0) *= (1.0 / Np);
+        coeffs(1) *= (2.0 / Np);
+
+        // Compute the rest of the coefficients. 
+        // i ranges across the coefficients, and b_i is always 2 here.
+        for (int i = 2; i < Np; i++) {
+            // k ranges across the x values
+            for (int k = 0; k < Np; k++) { 
+                double val = cheb_vals[i][k];
+                coeffs(i) +=  fvals(k) * val;
+            }
+
+            coeffs[i] *= (2.0 / Np);
+        }
+
+        return coeffs;
+    }
+
     /// @brief Evaluate the 1D tchebyshev interpolation at the points xs. This implementation
     /// assumes that the point xs are in the interval [-1,1].
     /// @tparam T float, double, complex<float>, complex<double>
@@ -237,3 +269,7 @@ namespace Cheb1D {
 
     }
 }
+
+
+
+

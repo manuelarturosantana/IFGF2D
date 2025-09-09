@@ -3,6 +3,7 @@
 // #include <Eigen>
 #include <array>
 #include <memory>
+#include <unordered_set>
 #include <Eigen/Dense>
 
 #include "../utils/Chebyshev1d.hpp"
@@ -48,13 +49,17 @@ class Patch {
 
         BoundingBox bounding_box_;
         
-        // Stores the t-value of points within the patch for precomputations.
+        // Stores the t-value (in [t1,t2]) of points within the patch for precomputations.
         std::vector<double> point_t_vals_;
+        // Store the curve jacobian evaulated at each point in the patch.
+        Eigen::ArrayXd curve_jac;
 
         // Stores the index over all curve points of the near singular point indices
         std::vector<long long> near_singular_point_indices_;
         // Location of tvals corresponding to the near singular points.
         std::vector<double>  near_singular_point_ts_; 
+        // A set for checking if a point is near singular. 
+        std::unordered_set<long long> near_singular_point_lookup_; 
 
         // Storing the curve as a reference means we must guarantee that the curve passed 
         // in outlives all the patch objects that use it. If this is an issue

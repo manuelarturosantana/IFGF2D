@@ -4,6 +4,7 @@
 #include <memory>
 
 
+
 #include "../Geometry/Patch.hpp"
 #include "GreenFunctions.hpp"
 
@@ -16,13 +17,14 @@ Potential Future Improvements
          If the gss part becomes much to slow
      --> Rather than GSS for now I am just going to do the change of variables at the endpoints
          of the patch. As long as it is not nearly self intersecting this should work.
-
+    --> We may want two versions of the Green Function. One for sing/nearsing interactions that
+        takes into account cancelation errors, and one for IFGF which doesn't need to account for such errors
 */
 
 /* 
 Current assumptions to watch out for
     1. The number of points in each patch is the same. Will need to change the dermination
-        of the near singular points if this changes
+        of the near singular points if this changes. Actually will need each patch to store NP
 
 */
 
@@ -52,8 +54,8 @@ class ForwardMap {
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
         std::vector<double> ys_;
 
-        std::vector<double> fejer_nodes_;
-        std::vector<double> fejer_weights_;
+        Eigen::ArrayXd fejer_nodes_;
+        Eigen::ArrayXd fejer_weights_;
 
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
@@ -96,6 +98,21 @@ class ForwardMap {
             (const Patch<Np>& patch, double tsing, double xsing, double ysing, 
                  std::complex<double> wave_number, Eigen::Ref<Eigen::VectorXcd> out_precomps);
 
+        /// @brief Multiply the density by the curve jacobian and integration weights
+        ///        in preparation for using IFGF
+        void compute_intensities(Eigen::VectorXcd& density);
+        
+        /// @brief Computes the non-singular interations in computing Ax without IFGF
+        /// @param density The input density with intensities already computed
+        /// @param wave_number The wave number of the problem
+        /// @return A vector of the output
+        Eigen::VectorXcd compute_non_singular_interactions_unacc(Eigen::VectorXcd& density, 
+                std::complex<double> wave_number);
+        
+        /// @brief Returns a vector of the singular and near singular interactions given the density.
+        Eigen::VectorXcd compute_sing_near_sing_interactions(Eigen::VectorXcd& density);
+
+
 
         // Other functions to implement:
         // Compute intensities: Take in the density and multiply by the correct weights/jacobians
@@ -103,6 +120,12 @@ class ForwardMap {
             // Computing the Singular / Near singular interactions
             // Computing the intensities and doing the direct sum
             // Eventually going to include IFGF
+
+        /// @brief Compute the forward map Ax = b without IFGF
+        Eigen::VectorXcd compute_Ax_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number);
+        /// compute in singular/near singular interactions
+        /// Compute the intensities
+        /// Compute the direct sum.
 };
 
 

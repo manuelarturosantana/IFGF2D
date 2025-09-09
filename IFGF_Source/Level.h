@@ -51,6 +51,8 @@ class Level {
         * unordered_map is a hash table, stores keys and values.
         */
         std::unordered_set<long long> mortonidofrelboxes_;
+        // TODO: There is an assumption here that the points are orderd in such a way that
+        // all the points in a box go in ascending order. May or may not be a problem
         // Each element holds the start index of the points in the morton box, as well as
         // the number of points in that box.
         std::unordered_map<long long, std::array<long long, 2>> mortonbox2discretizationpoints_;
