@@ -51,11 +51,16 @@ void ForwardMap<Np, Formulation, Nroot>::init_points_and_patches(ClosedCurve& cu
 
     for (size_t ii = 0; ii < num_patches_; ii++) {
         patches_.emplace_back(patch_lims[ii], patch_lims[ii + 1], curve, delta_);
+
         patches_[ii].comp_bounding_box();
+
+        patches_[ii].point_t_vals_.reserve(Np);
 
         // Put points in a vector on the curve
         for (int jj = 0; jj < Np; jj++) { 
             double t_curr = ab2cd(fejer_nodes_[jj], -1, 1, patch_lims[ii], patch_lims[ii + 1]);
+            patches_[ii].point_t_vals_.push_back(t_curr);
+
             xs_.push_back(curve.xt(t_curr));
             ys_.push_back(curve.yt(t_curr));
         }
@@ -144,10 +149,8 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
 
 template <int Np, FormulationType Formulation, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_precomputations
-    (const Patch<Np>& patch, double tsing, std::complex<double> wave_number) {
-
-    // Setup output vector
-    Eigen::VectorXcd out_precomps(Np);
+    (const Patch<Np>& patch, double tsing, double xsing, double ysing,
+        std::complex<double> wave_number, Eigen::Ref<Eigen::VectorXcd> out_precomps) {
 
     // Set up vector of Cheb left and Cheb right
     Eigen::ArrayXd cheb_nm1  =  Eigen::ArrayXd::Constant(num_ns, 1.0);  
@@ -163,9 +166,6 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_
     // Set up Green function evaluations on the left and right
     Eigen::ArrayXcd  green(num_ns);
     
-    // Cartesean coordinates of the singular point.
-    const double xsing = curve_.xt(tsing); const double ysing = curve_.yt(tsing);
-    
     // Location in [-1,1] of the singularity
     double alpha = ab2cd(tsing, patch.t1, patch.t2, -1.0, 1.0);
 
@@ -174,8 +174,6 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_
     
     // This check to see if it is on the enpoint is ad hoc for now. Perhaps it needs to be tighter
     if (std::abs(-1.0 - alpha) < 1e-5) { 
-        // DEBUG
-        std::cout << "Using left change of variables" << std::endl;
         sing_loc = -1;
     } else if (std::abs(1.0 - alpha) < 1e-5) {
         sing_loc = 1;
@@ -239,18 +237,36 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_
 }
 
 template <int Np, FormulationType Formulation, int Nroot>
-void ForwardMap<Np, Formulation, Nroot>::compute_precomputations() {
+void ForwardMap<Np, Formulation, Nroot>::compute_precomputations(std::complex<double> wavenumber) {
     // Loop over patches
-        // Init Patch eigen matrix of size npoints_rows x n_points + n_near singualr poitns columsn
-        // Loop over x values 
-            // Set the colum with an function which computes the precomputations
-            // matrix.col = ()...
-        // Loop over near singular points
-            // If distance of projection point to endpoint is < 1e-3
-            // Loop over Cheb polynomials
-            // Do a once sided change of variables
-            // Loop over Cheb polynomials
-            // otherwise do the two sided change of variables
+    for (int ii = 0; ii < num_patches_; ii++) {
+        Patch<Nroot>& patch = patches_[ii];
 
+        patch.precomputations_ = 
+            Eigen::MatrixXcd(Np, Np + patch.near_singular_point_ts_.size());
+        
+        // Singular Precomputations
+        for (int jj = 0; jj < Np; jj++) {
+            double xsing = xs_[ii * Np + jj];
+            double ysing = ys_[ii * Np + jj];
+
+            single_patch_point_compute_precomputations(patch, patch.point_t_vals_[jj],
+            xsing, ysing, wavenumber, patch.precomputations_.col(jj));
+        }
+
+        // Near Singular Precomputations
+        for (size_t jj = 0; jj < patch.near_singular_point_indices_.size(); jj++) {
+
+            double tsing = patch.near_singular_point_ts_[jj];
+            double xsing = xs_[patch.near_singular_point_indices_[jj]];
+            double ysing = ys_[patch.near_singular_point_indices_[jj]];
+   
+
+            single_patch_point_compute_precomputations(patch, tsing, xsing, ysing,
+            wavenumber, patch.precomputations_.col(Np + jj));
+        }
+
+    }
+    
 }
 

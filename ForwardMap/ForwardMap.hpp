@@ -76,25 +76,29 @@ class ForwardMap {
         /// on the number of discretization points in each patch
         void determine_patch_near_singular_points();
         
-
-        
-
-        // Loop through the patches and compute the precomputations for each patch
-        void compute_precomputations();
+        /// Loop through the patches and compute the precomputations for each patch
+        /// @param wavenumber The wavenumber for the solve. Not necessarily the same as for
+        ///        init_points_and_patches, but should have real part <= the one in that function
+        ///        to maintain accuracy.
+        void compute_precomputations(std::complex<double> wavenumber);
         
         /// @brief Given a patch compute the precomputations corresponding to the weights.
         /// Works if the point is not on the endpoints 
         /// @param patch The patch to integrate over
-        /// @param tsing The in patch t-value of the integration point in the interval [t1,t2]
-        ///              which relates to the patch parameterization.
+        /// @param tsing The in patch t-value corresponding to the singular point, or projected
+        ///              point for the near singularity.
+        /// @param xsing (also ysing) The x and y location of the singular (or near singular)
+        ///        point. Necessary to pass in since for near singular point curve.x_t(t_sing) != xsing
         /// @param wave_number The wave number for this use of the solver.
+        /// @param out_precomps  The vector or column of an eigenmatrix to be computed.
         /// @return The precomutations as a vector for each point
         Eigen::VectorXcd single_patch_point_compute_precomputations
-            (const Patch<Np>& patch, double tsing, std::complex<double> wave_number);
+            (const Patch<Np>& patch, double tsing, double xsing, double ysing, 
+                 std::complex<double> wave_number, Eigen::Ref<Eigen::VectorXcd> out_precomps);
 
 
         // Other functions to implement:
-        // Compute intensities: Take in the density and multiply by the correct weights
+        // Compute intensities: Take in the density and multiply by the correct weights/jacobians
         // compute_forward_map: Send x -> Ax by (Take in k as an argument)
             // Computing the Singular / Near singular interactions
             // Computing the intensities and doing the direct sum

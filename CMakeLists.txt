@@ -11,13 +11,13 @@ message(STATUS "C++ Compiler: ${CMAKE_CXX_COMPILER}")
 
 #/usr/bin/c++
 # specify the C++ standard
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 enable_language(Fortran) 
 set(CMAKE_Fortran_COMPILER ~/intel/oneapi/compiler/2025.0/bin/ifx)
 message(STATUS "Fortran Compiler: ${CMAKE_Fortran_COMPILER}")
 
 ################################### SOURCE AND LINKER PATHS ###############################
-set(COMP_BESS_PATH "${CMAKE_CURRENT_SOURCE_DIR}/complex_bessel-master/build/lib64/libcomplex_bessel.so")
+set(COMP_BESSEL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/complex_bessel-master/build/lib64/libcomplex_bessel.so")
 
 set(GEOMETRY_SOURCE_DIR Geometry)
 set(GEOMETRY_SOURCES 
@@ -35,7 +35,7 @@ add_executable(IFGF_main
                 IFGF_Source/main.cpp)
 
 
-target_link_libraries(IFGF_main PRIVATE ${COMP_BESS_PATH})
+target_link_libraries(IFGF_main PRIVATE ${COMP_BESSEL_PATH})
 target_compile_options(IFGF_main PRIVATE -Wall -Wextra)
 
 
@@ -50,6 +50,16 @@ target_compile_options(IFGF_main PRIVATE -Wall -Wextra)
 add_executable(InitForwardMap 
                 ${GEOMETRY_SOURCES} tests/ForwardMap/InitializeForwardMap.cpp)
 target_compile_options(InitForwardMap PRIVATE ${COMMON_COMPILE_FLAGS})
+
+add_executable(SinglePointSingCoeffs
+                ${GEOMETRY_SOURCES} tests/ForwardMap/SinglePointSingCoeffs.cpp)
+target_compile_options(SinglePointSingCoeffs PRIVATE ${COMMON_COMPILE_FLAGS})
+target_link_libraries(SinglePointSingCoeffs PRIVATE ${COMP_BESSEL_PATH})
+
+add_executable(ComputeAx
+                ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
+target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
+target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
 
 
 

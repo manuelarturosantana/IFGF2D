@@ -126,7 +126,7 @@ double inline xi_cov_right(double t, double p) {
 
 // alpha = -1;
 double inline xi_cov_left(double t,  double p) {
-    return -1.0 + ((-2.0 / M_PI) * w_cov_base(M_PI * std::abs((t + 1.0) / 2.0),p));
+    return -1.0 + ((2.0 / M_PI) * w_cov_base(M_PI * std::abs((t + 1.0) / 2.0),p));
 }
 
 //////////////////////////////// derivatives of the change of variables //////////////////
@@ -143,7 +143,7 @@ double inline dxi_cov_right(double t, double p) {
 // alpha = -1;
 double inline dxi_cov_left(double t,  double p) {
     double temp = (t + 1.0) / 2.0;
-    return -1.0 * wp_cov_base(M_PI * std::abs(temp),p) * sgn(temp);
+    return 1.0 * wp_cov_base(M_PI * std::abs(temp),p) * sgn(temp);
 }
 
 

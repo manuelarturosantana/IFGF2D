@@ -15,12 +15,13 @@ int main() {
     double delta = 0.1;
     double k     = 5;
     double wave_lengths_per_patch = 1.0;
-    double singular_tval = 0.2;
+    double singular_tval = 0;
+    // double singular_tval = 0.392699;
 
-    Circle circle;
-    // Kite kite;
+    // Circle curve;
+    Kite curve;
     constexpr int num_points = 10;
-    ForwardMap<num_points, FormulationType::SingleLayer, num_points> FM(delta, circle, wave_lengths_per_patch, k);
+    ForwardMap<num_points, FormulationType::SingleLayer, num_points> FM(delta, curve, wave_lengths_per_patch, k);
 
         // Prints the matlab code to plot the patches and bounding boxes
       for (size_t i = 0; i < 1; i++) {
@@ -30,10 +31,12 @@ int main() {
     std::cout << std::endl;
 
     // TODO: This appears to work, but only for 5-6 digits matching Matlab's function
-    // Could be a matlab thing, or something with my function. This could be an issue when testing 
-    // convergence. Something to check if the overall method doesn't end up as accurate as we hope
+    // I believe this is due to cancellation errors in the Sing Layer Potential
+    // We may fix this in the future, but since we are using IFGF 5-6 digits may suffice
     Eigen::IOFormat FullPrecisionFmt(Eigen::FullPrecision);
-    Eigen::VectorXcd out = FM.single_patch_point_compute_precomputations(FM.patches_[0], singular_tval, k);
+    Eigen::VectorXcd out(num_points);
+    double xsing = curve.xt(singular_tval); double ysing = curve.yt(singular_tval);
+    FM.single_patch_point_compute_precomputations(FM.patches_[0], singular_tval, xsing, ysing, k, out);
     std::cout << "Precomputations \n" << out.format(FullPrecisionFmt) << std::endl;
     
 

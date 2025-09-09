@@ -41,13 +41,16 @@ class Patch {
         bool ist1open, ist2open;  // Tracks if patch has open endpts
         bool ist1corner, ist2corner; // Tracks it patch has corner endpoints
 
-        // Matrix containing the points varying in the columns, and tchebyshev polynomials
-        // varying down the rows. This convention makes it easier to grab a set of coefficients
+        // Matrix containing the points varying with column index, and tchebyshev polynomials
+        // varying with row index. This convention makes it easier to grab a set of coefficients
         // as Eigen is column major
-        Eigen::Matrix2cd precomputations;
+        Eigen::MatrixXcd precomputations_;
 
         BoundingBox bounding_box_;
         
+        // Stores the t-value of points within the patch for precomputations.
+        std::vector<double> point_t_vals_;
+
         // Stores the index over all curve points of the near singular point indices
         std::vector<long long> near_singular_point_indices_;
         // Location of tvals corresponding to the near singular points.
