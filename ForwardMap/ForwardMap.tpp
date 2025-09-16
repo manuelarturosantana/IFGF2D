@@ -28,6 +28,7 @@ ForwardMap<Np, Formulation, Nroot>::ForwardMap(double delta, ClosedCurve& curve,
     auto start = std::chrono::high_resolution_clock::now();
     determine_patch_near_singular_points();
     auto end = std::chrono::high_resolution_clock::now();
+
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken to determine near singular points: " << elapsed.count() << std::endl;
    
@@ -57,12 +58,12 @@ void ForwardMap<Np, Formulation, Nroot>::init_points_and_patches(ClosedCurve& cu
         patches_[ii].point_t_vals_.reserve(Np);
         patches_[ii].curve_jac = Eigen::ArrayXd(Np);
 
-        // Put points in a vector on the curve
+        // Store t, x, y, and curve jacobian for each point in the patch
         for (int jj = 0; jj < Np; jj++) { 
             double t_curr = ab2cd(fejer_nodes_[jj], -1, 1, patch_lims[ii], patch_lims[ii + 1]);
             patches_[ii].point_t_vals_.push_back(t_curr);
 
-            patches_[ii].curve_jac(ii) = curve_.normal_t(t_curr).norm();
+            patches_[ii].curve_jac(jj) = curve_.normal_t(t_curr).norm();
 
             xs_.push_back(curve.xt(t_curr));
             ys_.push_back(curve.yt(t_curr));
@@ -79,6 +80,9 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
 
             long long test_patch_ind;
 
+            // If there are only 2 patches this prevents double counting the patch
+            if (num_patches_ <= 2 && jj > ii) { continue;}
+
             // Look at neighboring patches, including endpoints.
             if (jj == ii) {
                 continue;
@@ -90,6 +94,8 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
             } else {
                 test_patch_ind = jj;
             }
+
+
 
             // Loop over the points in the patch, and check if it is near singular
             // We use the global and not patchwise ordering so we can store which points
@@ -281,8 +287,15 @@ void ForwardMap<Np, Formulation, Nroot>::compute_intensities(Eigen::VectorXcd& d
  
     for (long long ii = 0; ii < num_patches_; ii++) {
  
-        double m121_jac = (patches_[ii].t2 - patches_[ii].t1) / 2.0;
-        density.segment(ii * Np, Np).array() *= m121_jac * fejer_weights_ * patches_[ii].curve_jac;
+        double m121_jac = ab2cdjac(-1,1,patches_[ii].t1,patches_[ii].t2);
+        // (patches_[ii].t2 - patches_[ii].t1) / 2.0;
+        //Debug
+        if (ii == 0) {
+            // std::cout << density.segment<Np>(ii * Np).array() << std::endl;
+            std::cout << "Curve jac: \n" << patches_[ii].curve_jac << std::endl;
+            // std::cout << "Fejer weights: " << fejer_weights_ << std::endl;
+        }
+        density.segment<Np>(ii * Np).array() *= m121_jac * fejer_weights_ * patches_[ii].curve_jac;
     }
 
 }
@@ -322,9 +335,16 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::
                             eta_, wave_number);
 
                     }
+
+                    //Debug
+                    if (pind2 == 1) {
+                        std::cout << "Patch ind: " << pind2 << std::endl;
+                        std::cout << "Patch lims: " << patches_[pind2].t1 << "; " << patches_[pind2].t2 << std::endl;
+                        std::cout << "Patch nonsing val: " << (green * density.segment<Np>(Np * pind2).array()).sum() << std::endl;
+                        std::cout << "x, y [" << xtarg << "; " << ytarg << "]" << std::endl;
+                    }
                     
-                    
-                    out(xind) += (green * density.segment(Np * pind2, Np).array()).sum();
+                    out(xind) += (green * density.segment<Np>(Np * pind2).array()).sum();
                 }
             }
         }
@@ -344,16 +364,33 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_inte
         // Compute the Chebshev coefficients of the density corresponding to that patch
 
         Eigen::VectorXcd coeffs = Cheb1D::interp_1d<Np>(density.segment(pind * Np, Np));
+
+        // if (pind == 0) {
+        //     //DEBUG
+        //     std::cout << "Chebshev Coefficients for patch 1" << std::endl;
+        //     std::cout << coeffs.cwiseAbs() << std::endl;
+        // }
         
         // Multiply the Chebshev coefficients by the precomputations
 
         Eigen::VectorXcd precomps_sum =  coeffs.transpose() * patches_[pind].precomputations_;
 
         // Add to the singular parts
-        out.segment(pind * Np, Np).array() += precomps_sum.segment(0, Np).array();
+        out.segment<Np>(pind * Np).array() += precomps_sum.segment<Np>(0).array();
         
+        //Debug 
+        if (pind == 0) {
+            std::cout << "Size of Near singular Precomps " << patches_[pind].near_singular_point_indices_.size() << std::endl;
+        }
+
         // Add to the near singular parts
         for (size_t sing_ind = 0; sing_ind < patches_[pind].near_singular_point_indices_.size(); sing_ind++) {
+            
+            if (pind == 0) {
+                //Debug
+                std::cout << "Near singular point index: " << patches_[pind].near_singular_point_indices_[sing_ind] << std::endl;
+
+            }
 
             out(patches_[pind].near_singular_point_indices_[sing_ind]) += 
                 precomps_sum(Np + sing_ind);
@@ -366,15 +403,13 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_inte
 template <int Np, FormulationType Formulation, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_Ax_unacc
     (Eigen::VectorXcd& density, std::complex<double> wave_number) {
-        
-        Eigen::MatrixXcd sns = compute_sing_near_sing_interactions(density);
-        //DEBUG
-        std::cout << "Computed sing and near sing parts" << std::endl;
-        compute_intensities(density);
-        //DEBUG
-        std::cout << "Computed intensities" << std::endl;
+      
 
-        Eigen::MatrixXcd ns  = compute_non_singular_interactions_unacc(density, wave_number);
+        Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
+
+        compute_intensities(density);
+
+        Eigen::VectorXcd ns  = compute_non_singular_interactions_unacc(density, wave_number);
 
         sns += ns;
         return sns;

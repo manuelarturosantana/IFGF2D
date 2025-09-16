@@ -15,8 +15,8 @@
 /// @param wave_number The wave number
 /// @param m Parameter for the eigenfunction
 /// @return A vector with the eigenvalues.
-Eigen::VectorXcd circle_eigenfunction(const std::vector<double>& xs, const std::vector<double> & ys, 
-    std::complex<double> wave_number, int m) {
+Eigen::VectorXcd circle_eigenfunction(const std::vector<double>& xs, 
+    const std::vector<double> & ys, int m) {
 
         std::complex<double> c_unit(0.0,1.0);
         Eigen::VectorXcd out(xs.size());
@@ -25,7 +25,7 @@ Eigen::VectorXcd circle_eigenfunction(const std::vector<double>& xs, const std::
             double x = xs[ii]; double y = ys[ii];
             Functions::CartToPol(x, y);
 
-            out(ii) = std::exp(c_unit * wave_number * (double) m);
+            out(ii) = std::exp(c_unit * y * static_cast<double>(m));
         }
 
         return out;
