@@ -72,13 +72,13 @@ typename std::enable_if<std::is_same<T, Eigen::VectorXd>::value || std::is_same<
 ///@param p Strength of cancelation for the change of variables
 double inline v_func(double t, double p) {
     double val = (0.5 - (1.0 / p)) * std::pow((t / M_PI) - 1.0,3);
-    val += (1.0/p) * ((t / M_PI) - 1) + 0.5;
+    val += (1.0/p) * ((t / M_PI) - 1.0) + 0.5;
     return val;
 }
 
 // Derivative of v_func
 double inline vp_func(double t, double p) {
-    double val = (3.0 / M_PI) * (0.5 - (1.0 / p)) * std::pow((t / M_PI) - 1.0, 2);
+    double val = (3.0 / M_PI) * (0.5 - (1.0 / p)) * std::pow((t / M_PI) - 1.0, 2.0);
     val += 1.0 / (p * M_PI);
     return val;
 }

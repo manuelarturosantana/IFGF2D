@@ -2,6 +2,7 @@
 #include <chrono>
 #include <iostream>
 #include <array>
+#include<iomanip>
 
 #include "ForwardMap.hpp"
 #include "../utils/Quadrature.hpp"
@@ -21,7 +22,6 @@ ForwardMap<Np, Formulation, Nroot>::ForwardMap(double delta, ClosedCurve& curve,
     fejer_nodes_ns_ = Eigen::ArrayXd(num_ns); fejer_weights_ns_ =  Eigen::ArrayXd(num_ns);
     fejerquadrature1(fejer_nodes_ns_, fejer_weights_ns_, num_ns);
 
-    
     // Compute all points used in the discretization and bounding boxes.
     init_points_and_patches(curve, wavelengths_per_patch, patch_split_wavenumber);
 
@@ -60,7 +60,8 @@ void ForwardMap<Np, Formulation, Nroot>::init_points_and_patches(ClosedCurve& cu
 
         // Store t, x, y, and curve jacobian for each point in the patch
         for (int jj = 0; jj < Np; jj++) { 
-            double t_curr = ab2cd(fejer_nodes_[jj], -1, 1, patch_lims[ii], patch_lims[ii + 1]);
+            double t_curr = ab2cd(fejer_nodes_[jj], -1.0, 1.0, patch_lims[ii], patch_lims[ii + 1]);
+
             patches_[ii].point_t_vals_.push_back(t_curr);
 
             patches_[ii].curve_jac(jj) = curve_.normal_t(t_curr).norm();
@@ -103,8 +104,6 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
             long long tp_val_start = test_patch_ind * Np;
 
             for (long long kk = tp_val_start; kk < tp_val_start + Np; kk++) {
-                // DEBUG
-                // std::cout << "Bounding box computation for " << kk << std::endl;
 
                 // See if it is in the bounding box
                 double xp = xs_[kk];
@@ -139,10 +138,6 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
              
                         // Check if the point in the bounding box is near singular.
                         if (out[1] < delta_) {
-                            // // DEBUG
-                            // std::cout << " Found a near singular point via brent_method" << std::endl;
-                            // std::cout << out[0] << "  " << out[1] << std::endl;
-                            // std::cout << "Patch lims" <<  patches_[test_patch_ind].t1 << " " << patches_[test_patch_ind].t2;
                             p_tp->near_singular_point_indices_.push_back(kk);
                             p_tp->near_singular_point_lookup_.insert(kk);
                             p_tp->near_singular_point_ts_.push_back(out[0]);
@@ -288,13 +283,7 @@ void ForwardMap<Np, Formulation, Nroot>::compute_intensities(Eigen::VectorXcd& d
     for (long long ii = 0; ii < num_patches_; ii++) {
  
         double m121_jac = ab2cdjac(-1,1,patches_[ii].t1,patches_[ii].t2);
-        // (patches_[ii].t2 - patches_[ii].t1) / 2.0;
-        //Debug
-        if (ii == 0) {
-            // std::cout << density.segment<Np>(ii * Np).array() << std::endl;
-            std::cout << "Curve jac: \n" << patches_[ii].curve_jac << std::endl;
-            // std::cout << "Fejer weights: " << fejer_weights_ << std::endl;
-        }
+
         density.segment<Np>(ii * Np).array() *= m121_jac * fejer_weights_ * patches_[ii].curve_jac;
     }
 
@@ -335,14 +324,6 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::
                             eta_, wave_number);
 
                     }
-
-                    //Debug
-                    if (pind2 == 1) {
-                        std::cout << "Patch ind: " << pind2 << std::endl;
-                        std::cout << "Patch lims: " << patches_[pind2].t1 << "; " << patches_[pind2].t2 << std::endl;
-                        std::cout << "Patch nonsing val: " << (green * density.segment<Np>(Np * pind2).array()).sum() << std::endl;
-                        std::cout << "x, y [" << xtarg << "; " << ytarg << "]" << std::endl;
-                    }
                     
                     out(xind) += (green * density.segment<Np>(Np * pind2).array()).sum();
                 }
@@ -359,17 +340,10 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_inte
     (Eigen::VectorXcd& density) { 
     
     Eigen::VectorXcd out = Eigen::VectorXcd::Zero(Np * num_patches_);
-
     for (long long pind = 0; pind < num_patches_; pind++) {
         // Compute the Chebshev coefficients of the density corresponding to that patch
 
-        Eigen::VectorXcd coeffs = Cheb1D::interp_1d<Np>(density.segment(pind * Np, Np));
-
-        // if (pind == 0) {
-        //     //DEBUG
-        //     std::cout << "Chebshev Coefficients for patch 1" << std::endl;
-        //     std::cout << coeffs.cwiseAbs() << std::endl;
-        // }
+        Eigen::VectorXcd coeffs = Cheb1D::interp_1d<Np>(density.segment<Np>(pind * Np));
         
         // Multiply the Chebshev coefficients by the precomputations
 
@@ -377,20 +351,9 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_inte
 
         // Add to the singular parts
         out.segment<Np>(pind * Np).array() += precomps_sum.segment<Np>(0).array();
-        
-        //Debug 
-        if (pind == 0) {
-            std::cout << "Size of Near singular Precomps " << patches_[pind].near_singular_point_indices_.size() << std::endl;
-        }
 
         // Add to the near singular parts
         for (size_t sing_ind = 0; sing_ind < patches_[pind].near_singular_point_indices_.size(); sing_ind++) {
-            
-            if (pind == 0) {
-                //Debug
-                std::cout << "Near singular point index: " << patches_[pind].near_singular_point_indices_[sing_ind] << std::endl;
-
-            }
 
             out(patches_[pind].near_singular_point_indices_[sing_ind]) += 
                 precomps_sum(Np + sing_ind);
@@ -403,8 +366,8 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_inte
 template <int Np, FormulationType Formulation, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_Ax_unacc
     (Eigen::VectorXcd& density, std::complex<double> wave_number) {
-      
-
+        
+        // This must go before computing the intensities, as compute intensities includes the integration weights.
         Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
 
         compute_intensities(density);

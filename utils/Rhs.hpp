@@ -3,6 +3,7 @@
 #include<vector>
 #include<complex>
 #include<cmath>
+#include<iomanip>
 
 #include<Eigen/Dense>
 
@@ -17,12 +18,14 @@
 /// @return A vector with the eigenvalues.
 Eigen::VectorXcd circle_eigenfunction(const std::vector<double>& xs, 
     const std::vector<double> & ys, int m) {
+     
 
         std::complex<double> c_unit(0.0,1.0);
         Eigen::VectorXcd out(xs.size());
 
         for (size_t ii = 0; ii < xs.size(); ii++) {
             double x = xs[ii]; double y = ys[ii];
+            
             Functions::CartToPol(x, y);
 
             out(ii) = std::exp(c_unit * y * static_cast<double>(m));

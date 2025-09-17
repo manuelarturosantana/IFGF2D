@@ -26,8 +26,8 @@ namespace Cheb1D {
 
         #pragma unenroll        
         for (int i = 0; i < N; i++) {  
-            
-            x[N-1-i] = std::cos(M_PI*(2.0*i+1.0)/(2.0*N));
+            // Convention that we go from 1 to -1
+            x[i] = std::cos(M_PI*(2.0*i+1.0)/(2.0*N));
             
         }   
 
