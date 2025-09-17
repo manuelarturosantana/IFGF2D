@@ -13,7 +13,7 @@ namespace Functions {
         std::array<double, N> x{};
               
         for (int i = 0; i < N; i++) {  
-            
+            // WARNING: This goes from [-1,1] not [1,-1].
             x[N-1-i] = std::cos(M_PI*(2.0*i+1.0)/(2.0*N));
             
         }   

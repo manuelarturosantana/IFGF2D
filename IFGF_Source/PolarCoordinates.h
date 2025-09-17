@@ -8,15 +8,15 @@ namespace Functions {
     inline double Atan2(const double y, const double x) noexcept {
 
         if (x > 0 && y >= 0)
-            return atan(y/x);
+            return std::atan(y/x);
         else if (x > 0 && y < 0)
-            return atan(y/x) + 2.0*M_PI;
+            return std::atan(y/x) + 2.0*M_PI;
         else if (x < 0 && y > 0)
-            return atan(y/x) + M_PI;
+            return std::atan(y/x) + M_PI;
         else if (x < 0 && y == 0)
             return +M_PI;
         else if (x < 0 && y < 0)
-            return atan(y/x) + M_PI;
+            return std::atan(y/x) + M_PI;
         else if (x == 0 && y > 0)
             return M_PI_2;
         else if (x == 0 && y < 0)

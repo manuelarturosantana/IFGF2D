@@ -57,7 +57,7 @@ class BoxTree
         void SortBox(const std::array<double, 2>& min, const double boxsize) 
         {
 
-            // TODO: This allocation could be better by using
+            // TODO SPEEDUP: This allocation could be better by using
             // #include <numeric>
             // std::vector<long long> sorting(N_);
             // std::iota(sorting.begin(), sorting.end(), 0);
@@ -73,11 +73,14 @@ class BoxTree
             std::vector<long long> morton_code(N_);
 
             for (long long i = 0; i < N_; i++) {
-
+                // Point2Morton Returns the morton index of the box which the point (x,y) is in
+                // So points are sorted into their boxes.
                 const long long morton = Level::Point2Morton(x_[i], y_[i], min[0], min[1], boxsize, nlevels_-1);
                 morton_code[i] = morton;
 
             }
+
+            // TODO: Keep track of sorting to know where the points go.
 
             new_sort(sorting, morton_code);
 
@@ -209,7 +212,7 @@ class BoxTree
             // of the x and y coordinates  or the points furthest from the origin
             double boxsize = std::max(max[0] - min[0], max[1] - min[1]);
 
-            // Sort points according to morton ordering.
+            // Sort points according to morton ordering at the lowest level.
             SortBox(min, boxsize / (1 << (nlevels_ - 1)));
 
             levels_.resize(nlevels_, nullptr);
@@ -647,6 +650,7 @@ class BoxTree
 
                     for (long long sourceiter = 0; sourceiter < npoints; sourceiter++) {
 
+                        // TODO: ADD HERE IF NEAR SINGULAR
                         if (points_begin + sourceiter == i)
                             continue;
 
