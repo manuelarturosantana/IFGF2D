@@ -12,23 +12,33 @@
 #include "Vector.h"
 #include "Interpolator.h"
 
+#include "../utils/DebugUtils.hpp"
+
 class Level;
 class BoxTree;
 
 const Interpolator<Chebyshev> IPSCHEME_;
+// TODO: This is a terrible hack :(..
+// Should use a template
+// const int P_ = 3*5;
 const int P_ = 3*5;
+
+
 
 class BoxTree 
 {
 
     private:
 
-        std::vector<double> x_; // x coordinates of all values to be evaluated in the IFGF
-        std::vector<double> y_; // y coordinates of all values to be evaluated in the IFGF
+        std::vector<double> x_; // x coordinates of all values to be evaluated in the IFGF, sorted in Morton order
+        std::vector<double> y_; // y coordinates of all values to be evaluated in the IFGF, sorted in Morton order
 
+        std::vector<long long> sorting_; // List as map to go from oringinal ordering to morton box ordering
         int nlevels_;
         double wavenumber_;
         long long N_; // Total number of points in IFGF.
+
+        // int P_;
 
         std::vector<Level*> levels_;
 
@@ -57,18 +67,14 @@ class BoxTree
         void SortBox(const std::array<double, 2>& min, const double boxsize) 
         {
 
-            // TODO SPEEDUP: This allocation could be better by using
-            // #include <numeric>
-            // std::vector<long long> sorting(N_);
-            // std::iota(sorting.begin(), sorting.end(), 0);
-            // About twice as fast but won't make a noticeable different in the code.
-            std::vector<long long> sorting;
-
+            // std::iota(sorting_.begin(), sorting_.end(), 0);
+            sorting_.reserve(N_);
             for (long long i = 0; i < N_; i++) {
 
-                sorting.push_back(i);
+                sorting_.push_back(i);
 
             }
+
 
             std::vector<long long> morton_code(N_);
 
@@ -80,15 +86,14 @@ class BoxTree
 
             }
 
-            // TODO: Keep track of sorting to know where the points go.
+            new_sort(sorting_, morton_code);
 
-            new_sort(sorting, morton_code);
-
+            
             std::vector<double> tmp_xy(N_);
 
             for (long long i = 0; i < N_; i++) {
 
-                tmp_xy[i] = x_[sorting[i]];
+                tmp_xy[i] = x_[sorting_[i]];
 
             }
 
@@ -96,7 +101,7 @@ class BoxTree
 
             for (long long i = 0; i < N_; i++) {
 
-                tmp_xy[i] = y_[sorting[i]];
+                tmp_xy[i] = y_[sorting_[i]];
 
             }
 
@@ -252,7 +257,7 @@ class BoxTree
                 }
 
                 // For each cousin, compute the cone segments that matter to it.
-                for (int j = 0; j < cousins.size(); j++) {
+                for (size_t j = 0; j < cousins.size(); j++) {
                     const long long morton_cousin = cousins[j];
                     const long long nonrel_conesegment = levels_[level]->Cart2Nonrelcone(morton_cousin, x, y);
                     // store the cone segement in the unordered set relating to the cousin.
@@ -304,7 +309,7 @@ class BoxTree
             std::vector<long long> morton_children;
             std::unordered_map<long long, std::array<std::unordered_map<long long, std::vector<int>>, 4>> protobox;
 
-            for (long long iter = 0; iter < levels_[level-1]->relconesegment2nonrelconesegment_.size(); iter++) {
+            for (size_t iter = 0; iter < levels_[level-1]->relconesegment2nonrelconesegment_.size(); iter++) {
 
                 long long rel_conesegment = iter; 
 
@@ -325,7 +330,7 @@ class BoxTree
 
                 }
 
-                for (int childiter = 0; childiter < morton_children.size(); childiter++) {
+                for (size_t childiter = 0; childiter < morton_children.size(); childiter++) {
 
                     const long long morton_child = morton_children[childiter];
                     const long long child_pos = morton_child % 4;
@@ -378,7 +383,7 @@ class BoxTree
 
             old_cocentered_morton_box = -1;
 
-            for (long long iter = 0; iter < levels_[level-1]->relconesegment2nonrelconesegment_.size(); iter++) {
+            for (size_t iter = 0; iter < levels_[level-1]->relconesegment2nonrelconesegment_.size(); iter++) {
 
                 long long rel_conesegment = iter; 
 
@@ -399,7 +404,7 @@ class BoxTree
 
                 }
 
-                for (int childiter = 0; childiter < morton_children.size(); childiter++) {
+                for (size_t childiter = 0; childiter < morton_children.size(); childiter++) {
 
                     const long long morton_child = morton_children[childiter];
                     const long long child_pos = morton_child % 4;
@@ -491,7 +496,7 @@ class BoxTree
             std::vector<long long>().swap(relcone2nonrelcone);
             std::vector<long long>().swap(relcone2cocenteredmorton);
 
-            for (long long iter = 0; iter < levels_[level]->relconesegment2nonrelconesegment_.size(); iter++) {
+            for (size_t iter = 0; iter < levels_[level]->relconesegment2nonrelconesegment_.size(); iter++) {
 
                 const long long cocenteredmortonbox = levels_[level]->relconesegment2cocenteredmortonboxid_[iter];
                 const long long nonrelconeid = levels_[level]->relconesegment2nonrelconesegment_[iter];
@@ -523,7 +528,7 @@ class BoxTree
 
                 const std::vector<long long> nonrelconesegments = iter->second;
 
-                for (long long csiter = 0; csiter < nonrelconesegments.size(); csiter++) {
+                for (size_t csiter = 0; csiter < nonrelconesegments.size(); csiter++) {
 
                     const long long relconesegment = levels_[level]->MortonboxNonrelconesegment2Relconesegment(iter->first, nonrelconesegments[csiter]);
 
@@ -537,7 +542,7 @@ class BoxTree
 
                 const std::vector<long long> nonrelconesegments = iter->second;
 
-                for (long long csiter = 0; csiter < nonrelconesegments.size(); csiter++) {
+                for (size_t csiter = 0; csiter < nonrelconesegments.size(); csiter++) {
 
                     const long long relconesegment = levels_[level]->MortonboxNonrelconesegment2Relconesegment(iter->first, nonrelconesegments[csiter]);
 
@@ -565,8 +570,10 @@ class BoxTree
 
                 }
 
-                if (interpolation_conesegments.size() == 0 && propagation_conesegments.size() == 0)
+                if (interpolation_conesegments.size() == 0 && propagation_conesegments.size() == 0) {
+                    std::cout << "Level: " << level << std::endl;
                     throw std::logic_error("The number of cone segments on any level cannot be 0");
+                }
 
                 LoadBalanceRelevantConeSegments(level, MergeRelevantConeSegments(interpolation_conesegments, propagation_conesegments));
 
@@ -639,7 +646,7 @@ class BoxTree
 
                 }
 
-                for (int neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
+                for (size_t neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
 
                     const long long neighbourmorton = neighbours[neighbouriter];
 
@@ -689,7 +696,7 @@ class BoxTree
             long long npoints;
             long long points_begin;
 
-            for (long long i = 0; i < levels_.back()->relconesegment2nonrelconesegment_.size(); i++) {
+            for (size_t i = 0; i < levels_.back()->relconesegment2nonrelconesegment_.size(); i++) {
 
                 const long long cocentered_morton_box = levels_.back()->relconesegment2cocenteredmortonboxid_[i];
                 const long long nonrel_conesegment = levels_.back()->relconesegment2nonrelconesegment_[i];
@@ -717,7 +724,8 @@ class BoxTree
                     double result_real = 0;
                     double result_imag = 0;
                     double kernel_real, kernel_imag;
-                
+                    
+                    // This computes what is known in the paper as F_S
                     for (long long k = 0; k < npoints; k++) {
 
                         locx = x_[points_begin + k];
@@ -736,17 +744,19 @@ class BoxTree
                     const double dabsfac = 1.0/(fac_real*fac_real + fac_imag*fac_imag);                    
 
                     const long long coefficients_pos = coefficients_begin + j;
+                    // Divide by the factorization to get the slowy varying function
                     conesegments_prev_real_[coefficients_pos] = (result_real * fac_real + result_imag * fac_imag) * dabsfac;
                     conesegments_prev_imag_[coefficients_pos] = (result_imag * fac_real - result_real * fac_imag) * dabsfac;
                 
                 }
 
+                // Now do the interpolation 
                 IPSCHEME_.GenerateInterpolant(&conesegments_prev_real_[coefficients_begin]);
                 IPSCHEME_.GenerateInterpolant(&conesegments_prev_imag_[coefficients_begin]);
             
             }            
         
-            for (long long i = 0; i < conesegments_current_real_.size(); i++) {
+            for (size_t i = 0; i < conesegments_current_real_.size(); i++) {
 
                 conesegments_current_real_[i] = conesegments_prev_real_[i];
                 conesegments_current_imag_[i] = conesegments_prev_imag_[i];
@@ -767,7 +777,7 @@ class BoxTree
             std::vector<long long> morton_children;
             std::array<long long, 4> old_locrelconesegment = {-1, -1, -1, -1};
 
-            for (long long i = 0; i < levels_[level-1]->relconesegment2nonrelconesegment_.size(); i++) {
+            for (size_t i = 0; i < levels_[level-1]->relconesegment2nonrelconesegment_.size(); i++) {
 
                 long long rel_conesegment = i; 
 
@@ -803,7 +813,7 @@ class BoxTree
                 }
 
                 // For each child of a parent evaluate at new interpolation points,
-                for (int childiter = 0; childiter < morton_children.size(); childiter++) {
+                for (size_t childiter = 0; childiter < morton_children.size(); childiter++) {
 
                     const long long morton_child = morton_children[childiter];
                     // Order the four children
@@ -812,7 +822,7 @@ class BoxTree
                     
                     for (auto childconeiter = childnonrelcones.begin(); childconeiter != childnonrelcones.end(); childconeiter++) {
                         // TODO: Does the vector in child cone iter holds points to interpolate at
-                        for (int interpiter = 0; interpiter < childconeiter->second.size(); interpiter++) {
+                        for (size_t interpiter = 0; interpiter < childconeiter->second.size(); interpiter++) {
 
                             const int interpid = childconeiter->second[interpiter];
                             locx = x[interpid];
@@ -895,7 +905,7 @@ class BoxTree
 
                 }
 
-                for (int cousiniter = 0; cousiniter < morton_cousinboxes.size(); cousiniter++) {
+                for (size_t cousiniter = 0; cousiniter < morton_cousinboxes.size(); cousiniter++) {
 
                     locx = x;
                     locy = y;
@@ -938,7 +948,7 @@ class BoxTree
 
         void SwapCoefficient() {
 
-            for (long long i = 0; i < conesegments_current_real_.size(); i++) {
+            for (size_t i = 0; i < conesegments_current_real_.size(); i++) {
 
                 double tmp = conesegments_current_real_[i];
                 conesegments_current_real_[i] = conesegments_prev_real_[i];
@@ -952,10 +962,24 @@ class BoxTree
 
         }
 
+        void SortDensity(std::vector<double>& density_real, std::vector<double>& density_imag) {
+
+            std::vector<double> tmp_real(density_real);
+            std::vector<double> tmp_imag(density_imag);
+
+            for (long long i = 0; i < N_; i++) {
+                density_real[i] = tmp_real[sorting_[i]];
+                density_imag[i] = tmp_imag[sorting_[i]];
+
+            }
+
+        }
+
     public:
 
-        BoxTree(std::vector<double>& x, std::vector<double>& y, int nlevels, double wavenumber):
-        x_(x), y_(y), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size()) 
+    // The initializer list x_(x) syntax means x is copied into x_(x), unless x_ is a reference.
+        BoxTree(const std::vector<double>& x, const std::vector<double>& y, int nlevels, double wavenumber):
+        x_(x), y_(y), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size())
         {
 
             Initialize();
@@ -980,6 +1004,16 @@ class BoxTree
 
             ZeroSolution();
 
+            // TODO SPEEDUP: If we sort the points in the RP method according to the morton order
+            // then we don't have to do all this sorting here. However, it is easier to track
+            // and debug this way, especially when assigning the quadrature and jacobian weights.
+            // This leads to O(N) extra work every iteration, although there is of a necessity
+            // non-contiguous memory access pattern in this operation.
+
+            // Put the density in the correct order of the points.
+            SortDensity(density_real, density_imag);
+
+
             if (with_singular_interactions) 
                 SingularInteractions<_kernel>(density_real, density_imag);
 
@@ -1001,8 +1035,10 @@ class BoxTree
 
             for (long long i = 0; i < N_; i++) {
 
-                density_real[i] = solution_real_[i];
-                density_imag[i] = solution_imag_[i];
+                // Save the density in the original ordering
+                // Draw out a picture with three squences to see why this works.
+                density_real[sorting_[i]] = solution_real_[i];
+                density_imag[sorting_[i]] = solution_imag_[i];
 
             }
 

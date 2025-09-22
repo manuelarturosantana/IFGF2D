@@ -143,9 +143,13 @@ class Level {
             const long long posx = static_cast<long long>((x - min_x)/boxsize);
             const long long posy = static_cast<long long>((y - min_y)/boxsize);
 
-            if (posx < 0 || posy < 0 || posx >= 1 << level || posy >= 1 << level)
+
+            if (posx < 0 || posy < 0 || posx >= 1 << level || posy >= 1 << level) {
+                std::cout << "posx: " << posx << " posy: " << posy << " level: " << level << std::endl;
+                std::cout << "x: " << x << " y: " << y << " min_x: " << min_x << " min_y: " << min_y << " boxsize: " << boxsize << std::endl;
                 throw std::logic_error("The 2D box index cannot be < 0 or larger than the number of boxes");
 
+            }
             return Box2Morton(posx, posy, level);
 
         }

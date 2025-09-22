@@ -18,7 +18,8 @@ namespace Functions {
             
         }   
 
-        return std::move(x); 
+        // std::move(x) use this in pre c++ 17
+        return x; 
 
     }
 
@@ -28,7 +29,7 @@ namespace Functions {
         ret[0] = 1.0;
         ret[1] = x;
         
-        for (int i = 2; i < SIZE; i++) {
+        for (long unsigned int i = 2; i < SIZE; i++) {
 
             ret[i] = 2.0*x*ret[i-1] - ret[i-2];
         
@@ -61,7 +62,8 @@ namespace Functions {
         
         }
 
-        return std::move(polys);
+        // Use std::move(polys) in pre c++17
+        return polys;
         
     }
 

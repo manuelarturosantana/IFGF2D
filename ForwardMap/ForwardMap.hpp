@@ -15,8 +15,6 @@ Potential Future Improvements
      --> I suspect most of the near singular points are very near the endpoints of the patches
          We may want to use Brent's method or perhaps just project to the patch enpoint to
          If the gss part becomes much to slow
-     --> Rather than GSS for now I am just going to do the change of variables at the endpoints
-         of the patch. As long as it is not nearly self intersecting this should work.
     --> We may want two versions of the Green Function. One for sing/nearsing interactions that
         takes into account cancelation errors, and one for IFGF which doesn't need to account for such errors
 */
@@ -112,7 +110,8 @@ class ForwardMap {
         /// @brief Returns a vector of the singular and near singular interactions given the density.
         Eigen::VectorXcd compute_sing_near_sing_interactions(Eigen::VectorXcd& density);
 
-
+        /// @brief Compute the forward map Ax = b without IFGF
+        Eigen::VectorXcd compute_Ax_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number);
 
         // Other functions to implement:
         // Compute intensities: Take in the density and multiply by the correct weights/jacobians
@@ -121,11 +120,6 @@ class ForwardMap {
             // Computing the intensities and doing the direct sum
             // Eventually going to include IFGF
 
-        /// @brief Compute the forward map Ax = b without IFGF
-        Eigen::VectorXcd compute_Ax_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number);
-        /// compute in singular/near singular interactions
-        /// Compute the intensities
-        /// Compute the direct sum.
 };
 
 

@@ -17,7 +17,7 @@ void new_sort(std::vector<long long>& vector_A, std::vector<long long>& vector_B
 
     std::vector<long long> tmp_vector_B(vector_B.size());
 
-    for (long long i = 0; i < vector_B.size(); i++) {
+    for (size_t i = 0; i < vector_B.size(); i++) {
 
         tmp_vector_B[i] = vector_B[vector_A[i]];
                 
