@@ -4,22 +4,11 @@
 #include <complex>
 #include "Chebyshev.h"
 
-enum InterpolatorScheme 
-{
-    Chebyshev = 0
-};
-
-template <InterpolatorScheme scheme>
+template <int Ps = 3, int Pang  =5>
 class Interpolator
 {
 
     private:
-
-        // static means it belongs to the class, and will be shared for all instances.
-        // constexpr means the value is constant and known at compile time, so it can be 
-        // used in templates
-        static constexpr int Ps = 3;
-        static constexpr int Pang = 5;
 
         const std::array<double, Ps> xs_;
         const std::array<double, Pang> xang_;
@@ -27,7 +16,7 @@ class Interpolator
         const std::array<std::array<double, Ps>, Ps> Ts_; 
         const std::array<std::array<double, Pang>, Pang> Tang_;
 
-        const int P_; // The total number of interpolation points Ps * Pang;
+        const int P_ = Ps * Pang; // The total number of interpolation points Ps * Pang;
 
     public:
 

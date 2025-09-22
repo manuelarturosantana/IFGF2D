@@ -10,11 +10,13 @@
 
 #include "PolarCoordinates.h"
 
+template <int Ps, int Pang>
 class BoxTree;
 
 class Level {
 
     // This means that BoxTree can access the private and protected members of Level
+    template <int Ps, int Pang>
     friend class BoxTree;
 
     private:

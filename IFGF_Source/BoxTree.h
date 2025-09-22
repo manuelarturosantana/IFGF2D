@@ -16,17 +16,14 @@
 #include "../utils/DebugUtils.hpp"
 #include "../ForwardMap/GreenFunctions.hpp"
 
-class Level;
-class BoxTree;
+// class Level;
 
-const Interpolator<Chebyshev> IPSCHEME_;
 // TODO: This is a terrible hack :(..
 // Should use a template
 // const int P_ = 3*5;
-const int P_ = 3*5;
 
 
-
+template <int Ps = 3, int Pang = 5>
 class BoxTree 
 {
 
@@ -51,6 +48,9 @@ class BoxTree
         std::vector<std::complex<double>> conesegments_prev_;
 
         double coupling_parameter_ = 1.0;
+
+        const Interpolator<Ps, Pang> IPSCHEME_;
+        constexpr static int P_ = Ps * Pang;
 
 
     private:
@@ -956,11 +956,6 @@ class BoxTree
         {
 
             Initialize();
-
-        }
-
-        ~BoxTree() 
-        {
 
         }
 
