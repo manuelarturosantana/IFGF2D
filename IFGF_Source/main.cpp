@@ -83,41 +83,15 @@ inline static std::complex<double> fct(const double x1, const double x2,
 // In the paper this is known as the centered factor, but without the 1 /(4 PI)
 inline static std::complex<double> fac(const double distance)
 {
-    static constexpr std::complex<double> imag_unit (0,1.0);
-    return std::exp(imag_unit * wavenumber_ * distance) / distance;
+    // static constexpr std::complex<double> imag_unit (0,1.0);
+    //  return std::exp(imag_unit * wavenumber_ * distance) / distance;
+    double  re = cos(wavenumber_ * distance) / std::sqrt(distance);
+    double im = sin(wavenumber_ * distance) / std::sqrt(distance);
+
+    return std::complex<double>(re, im);
 
 } 
 
-
-// inline static void fct(const double x1, const double x2,
-//                        const double y1, const double y2,
-//                        const double densityreal, const double densityimag, 
-//                        double& phireal, double& phiimag) 
-// {
-
-//     static constexpr double tmpfactor = 1.0/M_PI/4.0;
-
-//     const double distance = std::sqrt((y1 - x1) * (y1 - x1) + (y2 - x2) * (y2 - x2));
-//     const double distance_inv = 1.0 / distance;
-
-//     const double kerreal = tmpfactor * cos(wavenumber_ * distance) * distance_inv;
-//     const double kerimag = tmpfactor * sin(wavenumber_ * distance) * distance_inv;
-
-//     phireal = densityreal * kerreal - densityimag * kerimag;
-//     phiimag = densityreal * kerimag + densityimag * kerreal;
-//     num_f_evals += 1;
-    
-// }
-
-// // In the paper this is known as the centered factor, but without the 1 /(4 PI)
-// inline static void fac(const double distance, double& re, double& im)
-// {
-
-//     re = cos(wavenumber_ * distance) / distance;
-//     im = sin(wavenumber_ * distance) / distance;
-    
-
-// } 
 
 void GenerateCircle(const long long npoints, const double r, std::vector<double>& x, std::vector<double>& y) {
 
@@ -155,9 +129,6 @@ double ComputeError(const std::vector<std::complex<double>>& approx,
                 x[target_iter], y[target_iter],
                 intensity[source_iter]);
 
-            // exact_real[target_iter] += tmpreal;
-            // exact_imag[target_iter] += tmpimag;
-
         }
 
     }
@@ -169,12 +140,6 @@ double ComputeError(const std::vector<std::complex<double>>& approx,
     for (long long iter = 0; iter < N; iter++) {
         // Norm returns abs^2, which is what the code was doing
         L2error += std::norm(exact[iter] - approx[iter]);
-        // L2error += std::abs(exact[iter] - approx[iter]);
-        // L2error += (exact_real[iter] - approx_real[iter]) * (exact_real[iter] - approx_real[iter]) + 
-        //            (exact_imag[iter] - approx_imag[iter]) * (exact_imag[iter] - approx_imag[iter]);
-
-        // L2normsol += exact_real[iter]*exact_real[iter] + exact_imag[iter]*exact_imag[iter];
-        // L2normsol += std::abs(exact[iter]);
         L2normsol += std::norm(exact[iter]);
 
     }
@@ -225,10 +190,12 @@ int main()
         std::vector<double> pointsx(N);
         std::vector<double> pointsy(N);
 
-        GenerateCircle(N, 1.0, pointsx, pointsy);    
+        GenerateCircle(N, 1.0, pointsx, pointsy);  
+        std::vector<double> pointsnx(pointsx);
+        std::vector<double> pointsny(pointsy);  
 
         auto setup_start = std::chrono::high_resolution_clock::now();
-        BoxTree boxes(pointsx, pointsy, nlevels, wavenumber_);
+        BoxTree boxes(pointsx, pointsy, pointsnx, pointsny, nlevels, wavenumber_);
         auto setup_end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> setup_elapsed = setup_end - setup_start;
         std::cout << "Setup time: " << setup_elapsed.count() << " seconds\n";

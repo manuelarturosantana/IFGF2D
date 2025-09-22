@@ -27,4 +27,17 @@ void new_sort(std::vector<long long>& vector_A, std::vector<long long>& vector_B
 
 }
 
+// return a sorted version of the vector by the indices in sorting
+void arrange_in_sorted_order(std::vector<long long>& sorting, std::vector<double>& vector ) {
+    
+    std::vector<double> tmp_vector(vector.size());
+    for (size_t i = 0; i < vector.size(); i++) {
+
+        tmp_vector[i] = vector[sorting[i]];
+                
+    }
+    vector = tmp_vector;
+
+}
+
 #endif
