@@ -12,9 +12,9 @@
 #include "Level.h"
 #include "Vector.h"
 #include "Interpolator.h"
-// #include "../ForwardMap/GreenFunctions.hpp"
 
 #include "../utils/DebugUtils.hpp"
+#include "../ForwardMap/GreenFunctions.hpp"
 
 class Level;
 class BoxTree;
@@ -25,6 +25,8 @@ const Interpolator<Chebyshev> IPSCHEME_;
 // const int P_ = 3*5;
 const int P_ = 3*5;
 
+
+
 class BoxTree 
 {
 
@@ -32,10 +34,8 @@ class BoxTree
 
         std::vector<double> x_; // x coordinates of all values to be evaluated in the IFGF, sorted in Morton order
         std::vector<double> y_; // y coordinates of all values to be evaluated in the IFGF, sorted in Morton order
-        std::vector<double> nx_; // x coordinates of the unit normal at each point
-        std::vector<double> ny_; // y coordinates of the unit normal at each point
-
-
+        std::vector<double> nx_;
+        std::vector<double> ny_;
         std::vector<long long> sorting_; // List as map to go from oringinal ordering to morton box ordering
         int nlevels_;
         double wavenumber_;
@@ -50,7 +50,8 @@ class BoxTree
         std::vector<std::complex<double>> conesegments_current_;
         std::vector<std::complex<double>> conesegments_prev_;
 
-        double coupling_parameter_ = 0.0;
+        double coupling_parameter_ = 1.0;
+
 
     private:
 
@@ -92,14 +93,6 @@ class BoxTree
 
             arrange_in_sorted_order(sorting_, x_);
             arrange_in_sorted_order(sorting_, y_);
-            // std::vector<double> tmpx(N_);
-            // std::vector<double> tmpy(N_);
-            // for (long long i = 0; i < N_; i++) {
-            //     tmpx[i] = x_[sorting_[i]];
-            //     tmpy[i] = y_[sorting_[i]];
-            // }
-            // x_ = tmpx;
-            // y_ = tmpy;
             arrange_in_sorted_order(sorting_, nx_);
             arrange_in_sorted_order(sorting_, ny_);
 
@@ -596,7 +589,6 @@ class BoxTree
 
             conesegments_current_ = std::vector<std::complex<double>>(maxncoeffs, 0.0);
             conesegments_prev_    = std::vector<std::complex<double>>(maxncoeffs, 0.0);
-
             
         }
 
@@ -610,7 +602,8 @@ class BoxTree
 
         }
 
-        template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>)>
+        //template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>)>
+        template <FormulationType Formulation>
         void SingularInteractions(std::vector<std::complex<double>> & density) {
 
             long long old_mortonbox = -1;
@@ -655,9 +648,13 @@ class BoxTree
 
                         double locx = x_[points_begin + sourceiter];
                         double locy = y_[points_begin + sourceiter];
+                        double locnx = nx_[points_begin + sourceiter];
+                        double locny = ny_[points_begin + sourceiter];
 
-                        result += _kernel(locx, locy, x, y, density[points_begin + sourceiter]);
-                      
+                        result += GF<Formulation>(locx, locy, x, y, locnx, 
+                            locny, coupling_parameter_, wavenumber_) * 
+                            density[points_begin + sourceiter];
+
                     }
 
                 }
@@ -668,15 +665,16 @@ class BoxTree
 
         }
 
-        template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>),
-                  std::complex<double> _factorization(const double)>
+        // template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>),
+        //           std::complex<double> _factorization(const double)>
+        template <FormulationType Formulation>
         void LevelDEvaluations(std::vector<std::complex<double>> & density) {
 
             long long old_cocentered_morton_box = -1;
             std::complex<double> locdensity;
 
-            double locx;
-            double locy;
+            double locx, locnx;
+            double locy, locny;
 
             long long npoints;
             long long points_begin;
@@ -714,47 +712,51 @@ class BoxTree
 
                         locx = x_[points_begin + k];
                         locy = y_[points_begin + k];
+                        locnx = nx_[points_begin + k];
+                        locny = ny_[points_begin + k];
+
                         locdensity = density[points_begin + k];
-                  
-                        result += _kernel(locx, locy, x, y, locdensity);
+
+                        result += GF<Formulation>(locx, locy, x, y, locnx, 
+                            locny, coupling_parameter_, wavenumber_) * locdensity;
 
                     }
 
                     // double fac_real, fac_imag;
-                    std::complex<double> fac = _factorization(radius);
-    
+                    std::complex<double> fac = factorization(radius, wavenumber_);                  
+
                     const long long coefficients_pos = coefficients_begin + j;
-                  
+                    // Divide by the factorization to get the slowy varying function
                     conesegments_prev_[coefficients_pos] = result / fac;
-                  
+                
+                
                 }
 
                 // Now do the interpolation 
                 IPSCHEME_.GenerateInterpolant(&conesegments_prev_[coefficients_begin]);
-                
+            
             }            
         
             for (size_t i = 0; i < conesegments_current_.size(); i++) {
 
                 conesegments_current_[i] = conesegments_prev_[i];
-            
+
+
             }
         
         }
 
         // Having already computed the the relevant cones compute the interpolants
         // in the cones for the next level up.
-        template<std::complex<double> _factorization(const double)>
+        // template<std::complex<double> _factorization(const double)>
         void Propagation(const int level) {
 
-            // std::array<double, P_> x, y, radii, value_real, value_imag;
             std::array<double, P_> x, y, radii;
 
             std::array<std::complex<double>, P_> value;
 
             double locx, locy;
 
-            // std::array<double const *, 4> childcoeffs_real, childcoeffs_imag;
             std::array<std::complex<double> const *, 4> childcoeffs;
 
             long long old_cocentered_morton_box = -1;
@@ -792,7 +794,8 @@ class BoxTree
                     levels_[level-1]->Cheb2Cart(cocentered_morton_box, nonrel_conesegment, x[interpid], y[interpid]);
 
                     value[interpid] = 0.0;
-         
+
+
                 }
 
                 // For each child of a parent evaluate at new interpolation points,
@@ -814,8 +817,8 @@ class BoxTree
                             
                             const long long locrelconesegment = levels_[level]->mortonboxnonrelcone2relcone_.at(morton_child).at(childconeiter->first);
                             const double locradius = levels_[level]->Cheb2Radius(childconeiter->first, locx);
-                            // double locfac_real, locfac_imag;
-                            std::complex<double> locfac = _factorization(locradius);
+                          
+                            std::complex<double> locfac = factorization(locradius, wavenumber_);
 
                             if (locrelconesegment != old_locrelconesegment[childiter]) {
 
@@ -828,7 +831,7 @@ class BoxTree
                             }
 
                             std::complex<double> tmp = IPSCHEME_.Interpolate(locx, locy, childcoeffs[childiter]);
-                         
+                 
                             value[interpid] += tmp * locfac;
 
                         }
@@ -839,7 +842,7 @@ class BoxTree
 
                 for (int interpid = 0; interpid < IPSCHEME_.GetNInterpPoints(); interpid++) {
 
-                    conesegments_current_[new_coeffs_begin_id+interpid] = value[interpid] / _factorization(radii[interpid]);
+                    conesegments_current_[new_coeffs_begin_id+interpid] = value[interpid] / factorization(radii[interpid], wavenumber_);
                     
                 }
 
@@ -854,15 +857,14 @@ class BoxTree
         // contributions from all boxes for which x lives in a cousin box from.
         // We loop over points, and then boxes for which the box x lives in is a 
         // cousin box to.
-        template <std::complex<double> _factorization(const double)>
+        // template <std::complex<double> _factorization(const double)>
         void Interpolation(const int level) {
 
             double locx, locy;
             long long old_morton_box = -1;
-            // Replaced the 189 with 2D bound 27
+            // TODO: SPEEDUP CHANGE 189 to 2D bound
             std::array<long long, 27> old_relconesegment; old_relconesegment.fill(-1);
             std::array<std::complex<double> const *, 27> cousincoeffs;
-
             std::vector<long long> morton_cousinboxes;
 
             for (long long pointiter = 0; pointiter < N_; pointiter++) {
@@ -871,7 +873,7 @@ class BoxTree
                 const double y = y_[pointiter];
 
                 std::complex<double> value = solution_[pointiter];
-               
+
                 const long long morton_box = levels_[level]->Point2Morton(x, y);
 
                 if (morton_box != old_morton_box) {
@@ -894,27 +896,27 @@ class BoxTree
                     relconesegment = levels_[level]->mortonboxnonrelcone2relcone_.at(morton_cousinbox).at(nonrelconesegment);
                     const double radius = levels_[level]->Cheb2Radius(nonrelconesegment, locx);
 
-                    std::complex<double> fac = _factorization(radius);
+                    std::complex<double> fac = factorization(radius, wavenumber_);
                     
                     if (relconesegment != old_relconesegment[cousiniter]) {
 
                         const long long coeffs_begin_id = relconesegment * IPSCHEME_.GetNInterpPoints(); 
                         cousincoeffs[cousiniter] = &conesegments_prev_[coeffs_begin_id];
     
+
                         old_relconesegment[cousiniter] = relconesegment;
 
                     }
 
                     const std::complex<double> tmp = IPSCHEME_.Interpolate(locx, locy, cousincoeffs[cousiniter]);
-  
-                    // Complex multiplication
+         
                     value += tmp * fac;
+
 
                 }
 
                 
                 solution_[pointiter] = value;
-
             }
 
         } 
@@ -922,7 +924,7 @@ class BoxTree
         void SwapCoefficient() {
 
             for (size_t i = 0; i < conesegments_current_.size(); i++) {
-            // for (size_t i = 0; i < conesegments_current_real_.size(); i++) {
+
 
                 
                 std::complex<double> tmp = conesegments_current_[i];
@@ -940,7 +942,7 @@ class BoxTree
 
             for (long long i = 0; i < N_; i++) {
                 density[i] = tmp[sorting_[i]];
-       
+
             }
 
         }
@@ -948,8 +950,8 @@ class BoxTree
     public:
 
     // The initializer list x_(x) syntax means x is copied into x_(x), unless x_ is a reference.
-        BoxTree(const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& nx,
-            std::vector<double>& ny, int nlevels, double wavenumber):
+        BoxTree(const std::vector<double>& x, const std::vector<double>& y, 
+            const std::vector<double> & nx, const std::vector<double> ny, int nlevels, double wavenumber):
         x_(x), y_(y), nx_(nx), ny_(ny), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size())
         {
 
@@ -962,8 +964,9 @@ class BoxTree
 
         }
 
-        template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>),
-                  std::complex<double> _factorization(const double)>
+        // template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>),
+        //           std::complex<double> _factorization(const double)>
+        template <FormulationType Formulation>
         void Solve(const bool with_singular_interactions, std::vector<std::complex<double>> & density) {
 
             if (nlevels_ < 3)
@@ -986,29 +989,30 @@ class BoxTree
 
 
             if (with_singular_interactions) 
-                SingularInteractions<_kernel>(density);
+                SingularInteractions<Formulation>(density);
 
-            LevelDEvaluations<_kernel, _factorization>(density);
+            LevelDEvaluations<Formulation>(density);
 
             for (int level = D; level >= 2; level--) {
 
                 if (level > 2) {
 
-                    Propagation<_factorization>(level);
+                    Propagation(level);
 
                 }
 
-                Interpolation<_factorization>(level);
+                Interpolation(level);
 
                 SwapCoefficient();
 
             }
 
             for (long long i = 0; i < N_; i++) {
+
                 // Save the density in the original ordering
                 // Draw out a picture with three squences to see why this works.
                 density[sorting_[i]] = solution_[i];
-    
+
             }
 
         }

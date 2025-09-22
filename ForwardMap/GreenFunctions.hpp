@@ -15,7 +15,8 @@ Things left TODO:
 enum class FormulationType {
     SingleLayer,
     DoubleLayer,
-    Combined
+    Combined,
+    ThreeD
 };
 
 /// @brief Evaluates the kernel Green's function or it's normal derivative for the different layer
@@ -83,6 +84,8 @@ std::complex<double> inline GF(const double p1x, const double p1y,
         //                 * rDotNorm;
         //      solution = solution_D - c_unit * coupling_parameter * solution_S;
 
+        } else if constexpr (Formulation == FormulationType::ThreeD) {
+            solution = std::exp(c_unit * wavenumber * norm_diff) / (4.0 * M_PI * norm_diff);
         } else {
             std::cout << "GF unknown layer potential specification";
             std::exit(1);
@@ -93,3 +96,9 @@ std::complex<double> inline GF(const double p1x, const double p1y,
     return solution;
 
 }
+
+std::complex<double> inline static factorization(const double distance, std::complex<double> wavenumber)
+{
+    static constexpr std::complex<double> imag_unit (0,1.0);
+    return std::exp(imag_unit * wavenumber * distance) / distance;
+} 

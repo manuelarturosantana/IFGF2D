@@ -10,6 +10,7 @@
 #include "BoxTree.h"
 
 #include "../complex_bessel-master/include/complex_bessel.h"
+#include "../ForwardMap/GreenFunctions.hpp"
 #include "../utils/DebugUtils.hpp"
 
 
@@ -83,12 +84,8 @@ inline static std::complex<double> fct(const double x1, const double x2,
 // In the paper this is known as the centered factor, but without the 1 /(4 PI)
 inline static std::complex<double> fac(const double distance)
 {
-    // static constexpr std::complex<double> imag_unit (0,1.0);
-    //  return std::exp(imag_unit * wavenumber_ * distance) / distance;
-    double  re = cos(wavenumber_ * distance) / std::sqrt(distance);
-    double im = sin(wavenumber_ * distance) / std::sqrt(distance);
-
-    return std::complex<double>(re, im);
+    static constexpr std::complex<double> imag_unit (0,1.0);
+    return std::exp(imag_unit * wavenumber_ * distance) / distance;
 
 } 
 
@@ -104,6 +101,7 @@ void GenerateCircle(const long long npoints, const double r, std::vector<double>
 
 }
 
+template <FormulationType Formulation>
 double ComputeError(const std::vector<std::complex<double>>& approx, 
                     const std::vector<double>& x, const std::vector<double>& y,
                     const std::vector<std::complex<double>>& intensity)
@@ -125,9 +123,10 @@ double ComputeError(const std::vector<std::complex<double>>& approx,
             if (target_iter == source_iter)
                 continue;
             
-            exact[target_iter] += fct(x[source_iter], y[source_iter],
+            // For our text case normal derivative and coupling paramter are not used.
+            exact[target_iter] += GF<Formulation>(x[source_iter], y[source_iter],
                 x[target_iter], y[target_iter],
-                intensity[source_iter]);
+                0.0, 0.0, 1.0, wavenumber_) * intensity[source_iter];
 
         }
 
@@ -181,6 +180,7 @@ int main()
 
     try {
 
+        constexpr FormulationType ftype = FormulationType::ThreeD;
         const long long N = 1000;
         const int nlevels = 6;
 
@@ -190,9 +190,10 @@ int main()
         std::vector<double> pointsx(N);
         std::vector<double> pointsy(N);
 
-        GenerateCircle(N, 1.0, pointsx, pointsy);  
+        GenerateCircle(N, 1.0, pointsx, pointsy);   
+        
         std::vector<double> pointsnx(pointsx);
-        std::vector<double> pointsny(pointsy);  
+        std::vector<double> pointsny(pointsy);
 
         auto setup_start = std::chrono::high_resolution_clock::now();
         BoxTree boxes(pointsx, pointsy, pointsnx, pointsny, nlevels, wavenumber_);
@@ -206,25 +207,18 @@ int main()
         std::vector<std::complex<double>> intensities = make_complex_vector(intensities_real, intensities_imag);
         std::vector<std::complex<double>> tmpintensities(intensities);
 
-        // std::vector<double> tmpintensities_real(intensities_real);
-        // std::vector<double> tmpintensities_imag(intensities_imag);
 
-        // std::vector<double> intensities_real(N, 1.0);
-        // std::vector<double> intensities_imag(N, 1.0);
-
-        // std::vector<double> tmpintensities_real(N, 1.0);
-        // std::vector<double> tmpintensities_imag(N, 1.0);
 
 
         auto solve_start = std::chrono::high_resolution_clock::now();
-        boxes.Solve<&fct, &fac>(compute_singular_interactions, intensities);
+        boxes.Solve<ftype>(compute_singular_interactions, intensities);
         auto solve_end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> solve_elapsed = solve_end - solve_start;
         std::cout << "Solve time: " << solve_elapsed.count() << " seconds\n";
 
         if (compute_error) {    
 
-            double error = ComputeError(intensities, pointsx, pointsy, tmpintensities);
+            double error = ComputeError<ftype>(intensities, pointsx, pointsy, tmpintensities);
 
             std::cout << "L2 Error = " << error << std::endl;
 
