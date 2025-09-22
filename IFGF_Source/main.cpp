@@ -20,37 +20,71 @@ const double wavenumber_ = M_PI;
 const std::complex<double> imag_unit (0,1.0);
 
 // This is the Hankel function case
-inline static void fct(const double x1, const double x2,
+// inline static void fct(const double x1, const double x2,
+//                        const double y1, const double y2,
+//                        const double densityreal, const double densityimag, 
+//                        double& phireal, double& phiimag) 
+// {
+
+//     // static constexpr double tmpfactor = 1.0/M_PI/4.0;
+
+//     const double distance = std::sqrt((y1 - x1) * (y1 - x1) + (y2 - x2) * (y2 - x2));
+//     std::complex<double> ker = sp_bessel::hankelH1(0, wavenumber_ * distance);
+//     const double kerreal = std::real(ker);
+//     const double kerimag = std::imag(ker);
+//     // const double distance_inv = 1.0 / distance;
+
+//     // const double kerreal = tmpfactor * cos(wavenumber_ * distance) * distance_inv;
+//     // const double kerimag = tmpfactor * sin(wavenumber_ * distance) * distance_inv;
+
+//     phireal = densityreal * kerreal - densityimag * kerimag;
+//     phiimag = densityreal * kerimag + densityimag * kerreal;
+//     num_f_evals += 1;
+// }
+
+// inline static void fac(const double distance, double& re, double& im)
+// {
+//     // Doing this gives a couple more digits of accuracy
+//     re = cos(wavenumber_ * distance) / std::sqrt(distance);
+//     im = sin(wavenumber_ * distance) / std::sqrt(distance);
+
+//     // re = cos(wavenumber_ * distance);
+//     // im = sin(wavenumber_ * distance);
+    
+
+// } 
+
+inline static std::complex<double> fct(const double x1, const double x2,
                        const double y1, const double y2,
-                       const double densityreal, const double densityimag, 
-                       double& phireal, double& phiimag) 
+                       const std::complex<double> density) 
 {
 
-    // static constexpr double tmpfactor = 1.0/M_PI/4.0;
+    static constexpr double tmpfactor = 1.0/M_PI/4.0;
+    static constexpr std::complex<double> imag_unit (0,1.0);
 
     const double distance = std::sqrt((y1 - x1) * (y1 - x1) + (y2 - x2) * (y2 - x2));
-    std::complex<double> ker = sp_bessel::hankelH1(0, wavenumber_ * distance);
-    const double kerreal = std::real(ker);
-    const double kerimag = std::imag(ker);
-    // const double distance_inv = 1.0 / distance;
+    const double distance_inv = 1.0 / distance;
 
-    // const double kerreal = tmpfactor * cos(wavenumber_ * distance) * distance_inv;
-    // const double kerimag = tmpfactor * sin(wavenumber_ * distance) * distance_inv;
-
-    phireal = densityreal * kerreal - densityimag * kerimag;
-    phiimag = densityreal * kerimag + densityimag * kerreal;
+    
+    // const std::complex<double> ker = tmpfactor * std::exp(imag_unit * wavenumber_ * distance) * distance_inv;
+    const double kerreal = tmpfactor * cos(wavenumber_ * distance) * distance_inv;
+    const double kerimag = tmpfactor * sin(wavenumber_ * distance) * distance_inv;
+    // This is slightly faster to do, but it won't matter in the Hankel function case.
+    std::complex<double> ker = std::complex<double>(kerreal, kerimag);
     num_f_evals += 1;
+
+       //     phireal = densityreal * kerreal - densityimag * kerimag;
+//     phiimag = densityreal * kerimag + densityimag * kerreal;
+    return density * ker;
+ 
+    
 }
 
-inline static void fac(const double distance, double& re, double& im)
+// In the paper this is known as the centered factor, but without the 1 /(4 PI)
+inline static std::complex<double> fac(const double distance)
 {
-    // Doing this gives a couple more digits of accuracy
-    re = cos(wavenumber_ * distance) / std::sqrt(distance);
-    im = sin(wavenumber_ * distance) / std::sqrt(distance);
-
-    // re = cos(wavenumber_ * distance);
-    // im = sin(wavenumber_ * distance);
-    
+    static constexpr std::complex<double> imag_unit (0,1.0);
+    return std::exp(imag_unit * wavenumber_ * distance) / distance;
 
 } 
 
@@ -96,36 +130,33 @@ void GenerateCircle(const long long npoints, const double r, std::vector<double>
 
 }
 
-double ComputeError(const std::vector<double>& approx_real, 
-                    const std::vector<double>& approx_imag, 
+double ComputeError(const std::vector<std::complex<double>>& approx, 
                     const std::vector<double>& x, const std::vector<double>& y,
-                    const std::vector<double>& intensity_real, const std::vector<double>& intensity_imag)
+                    const std::vector<std::complex<double>>& intensity)
 {
 
     const long long N = x.size();
 
-    std::vector<double> exact_real(N, 0.0);
-    std::vector<double> exact_imag(N, 0.0);
+    std::vector<std::complex<double>> exact(N, 0.0);
 
     double L2error = 0.0;
     double L2normsol = 0.0;
     auto start = std::chrono::high_resolution_clock::now();
     for (long long target_iter = 0; target_iter < N; target_iter++) {
 
-        double tmpreal, tmpimag;
+        // double tmpreal, tmpimag;
 
         for (long long source_iter = 0; source_iter < N; source_iter++) {
 
             if (target_iter == source_iter)
                 continue;
             
-            fct(x[source_iter], y[source_iter],
+            exact[target_iter] += fct(x[source_iter], y[source_iter],
                 x[target_iter], y[target_iter],
-                intensity_real[source_iter], intensity_imag[source_iter],
-                tmpreal, tmpimag);
+                intensity[source_iter]);
 
-            exact_real[target_iter] += tmpreal;
-            exact_imag[target_iter] += tmpimag;
+            // exact_real[target_iter] += tmpreal;
+            // exact_imag[target_iter] += tmpimag;
 
         }
 
@@ -136,18 +167,22 @@ double ComputeError(const std::vector<double>& approx_real,
     std::cout << "Direct computation time: " << elapsed.count() << " seconds\n";
 
     for (long long iter = 0; iter < N; iter++) {
-        
-        L2error += (exact_real[iter] - approx_real[iter]) * (exact_real[iter] - approx_real[iter]) + 
-                   (exact_imag[iter] - approx_imag[iter]) * (exact_imag[iter] - approx_imag[iter]);
+        // Norm returns abs^2, which is what the code was doing
+        L2error += std::norm(exact[iter] - approx[iter]);
+        // L2error += std::abs(exact[iter] - approx[iter]);
+        // L2error += (exact_real[iter] - approx_real[iter]) * (exact_real[iter] - approx_real[iter]) + 
+        //            (exact_imag[iter] - approx_imag[iter]) * (exact_imag[iter] - approx_imag[iter]);
 
-        L2normsol += exact_real[iter]*exact_real[iter] + exact_imag[iter]*exact_imag[iter];
+        // L2normsol += exact_real[iter]*exact_real[iter] + exact_imag[iter]*exact_imag[iter];
+        // L2normsol += std::abs(exact[iter]);
+        L2normsol += std::norm(exact[iter]);
 
     }
 
     return std::sqrt(L2error/L2normsol);
 
 }
-
+//////////////////////////// AI GENERATED UTILS//////////////////////////////////////////
 std::vector<double> random_vector(std::size_t N, double min = 0.0, double max = 1.0) {
     std::vector<double> vec(N);
     std::random_device rd;
@@ -159,6 +194,22 @@ std::vector<double> random_vector(std::size_t N, double min = 0.0, double max = 
     }
     return vec;
 }
+
+std::vector<std::complex<double>> make_complex_vector(
+    const std::vector<double>& re,
+    const std::vector<double>& im)
+{
+    std::size_t n = re.size();
+    std::vector<std::complex<double>> result;
+    result.reserve(n);
+
+    for (std::size_t i = 0; i < n; ++i) {
+        result.emplace_back(re[i], im[i]);
+    }
+
+    return result;
+}
+//////////////////////////////////////////////////////////////////////////////////////////
 
 int main() 
 {
@@ -185,8 +236,11 @@ int main()
         std::vector<double> intensities_real = random_vector(N, 0.0, 1.0);
         std::vector<double> intensities_imag(intensities_real);
 
-        std::vector<double> tmpintensities_real(intensities_real);
-        std::vector<double> tmpintensities_imag(intensities_imag);
+        std::vector<std::complex<double>> intensities = make_complex_vector(intensities_real, intensities_imag);
+        std::vector<std::complex<double>> tmpintensities(intensities);
+
+        // std::vector<double> tmpintensities_real(intensities_real);
+        // std::vector<double> tmpintensities_imag(intensities_imag);
 
         // std::vector<double> intensities_real(N, 1.0);
         // std::vector<double> intensities_imag(N, 1.0);
@@ -196,14 +250,14 @@ int main()
 
 
         auto solve_start = std::chrono::high_resolution_clock::now();
-        boxes.Solve<&fct, &fac>(compute_singular_interactions, intensities_real, intensities_imag);
+        boxes.Solve<&fct, &fac>(compute_singular_interactions, intensities);
         auto solve_end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> solve_elapsed = solve_end - solve_start;
         std::cout << "Solve time: " << solve_elapsed.count() << " seconds\n";
 
         if (compute_error) {    
 
-            double error = ComputeError(intensities_real, intensities_imag, pointsx, pointsy, tmpintensities_real, tmpintensities_imag);
+            double error = ComputeError(intensities, pointsx, pointsy, tmpintensities);
 
             std::cout << "L2 Error = " << error << std::endl;
 

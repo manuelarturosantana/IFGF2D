@@ -1,6 +1,7 @@
 #ifndef INTERPOLATOR_H
 #define INTERPOLATOR_H
 
+#include <complex>
 #include "Chebyshev.h"
 
 enum InterpolatorScheme 
@@ -62,7 +63,7 @@ class Interpolator
         // double const * const means a constant pointer to a constant double
         // const at the end means that this function does not modify the objects member variables.
         // Evaluate the interpolant at some point x and y, (which I believe should really be s and theta).
-        inline double Interpolate(const double x, const double y, double const * const vals_begin) const
+        inline std::complex<double> Interpolate(const double x, const double y, std::complex<double> const * const vals_begin) const
         {
             std::array<double, Ps> TargetTs; 
             std::array<double, Pang> TargetTtheta;
@@ -71,7 +72,7 @@ class Interpolator
             Functions::SetupMultipleTnArr<Ps>(x, TargetTs);
             Functions::SetupMultipleTnArr<Pang>(y, TargetTtheta);
 
-            double result = 0.0;
+            std::complex<double> result = 0.0;
             
             for (int sangiter1 = 0; sangiter1 < Pang; sangiter1++) {
                 for (int sraditer = 0; sraditer < Ps; sraditer++) {
@@ -88,10 +89,10 @@ class Interpolator
 
         // Compute the coefficients in the Chebyshev interpolant.
         // store them in array
-        void GenerateInterpolant(double* const arr) const
+        void GenerateInterpolant(std::complex<double>* const arr) const
         {     
 
-            std::array<std::array<double, Pang>, Ps> Cij;
+            std::array<std::array<std::complex<double>, Pang>, Ps> Cij;
 
             for (int m = 0; m < Ps; m++) {
                 for (int n = 0; n < Pang; n++) {
