@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <algorithm>
 
+#include <complex>
+
 #include "PolarCoordinates.h"
 
 template <int Ps, int Pang>
@@ -71,7 +73,7 @@ class Level {
 
         Level(const int level, const int nlevels, 
               const double min_x, const double min_y,
-              const double boxsize, const double wavenumber) :
+              const double boxsize, const std::complex<double> wavenumber) :
               level_(level), nlevels_(nlevels), min_x_(min_x), min_y_(min_y),
               boxsize_(boxsize), nboxesperside_(1 << level_) {
 
@@ -84,7 +86,7 @@ class Level {
         }
 
         template <ConeRefinementStrategy S = Helmholtz>
-        void InitializeConeSegments(const double wavenumber) {
+        void InitializeConeSegments(const std::complex<double> wavenumber) {
 
             // The closest radial point in the boxes in the paper
             const double minsize = (3.0/2.0 * boxsize_) * (1.0-1e-10); 
@@ -102,7 +104,7 @@ class Level {
                 if (level_ > 1)
                     // TODO: This looks like a hueristic to determine how many initial cones, but I'm not sure where it cones from.
                     // Note M_1_PI is 1 / PI
-                    nconeslevelscaling = std::max<long long>(1, std::ceil(wavenumber * boxsize_ * M_1_PI * 1.2)); //?
+                    nconeslevelscaling = std::max<long long>(1, std::ceil(std::real(wavenumber) * boxsize_ * M_1_PI * 1.2)); //?
 
             } else {
                 throw std::invalid_argument("Unknown cone refinement strategy.");
