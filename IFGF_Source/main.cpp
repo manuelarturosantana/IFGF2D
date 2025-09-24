@@ -181,8 +181,8 @@ int main()
     try {
 
         constexpr FormulationType ftype = FormulationType::ThreeD;
-        const long long N = 100;
-        const int nlevels = 16;
+        const long long N = 10000;
+        const int nlevels = 8;
 
         const bool compute_singular_interactions = true;
         const bool compute_error = true;

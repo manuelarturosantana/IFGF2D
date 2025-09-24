@@ -8,6 +8,7 @@
 #include <iostream>
 #include <numeric>
 #include <complex>
+#include <optional>
 
 #include "Level.h"
 #include "Vector.h"
@@ -603,9 +604,11 @@ class BoxTree
 
         }
 
-        //template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>)>
+        // Optional makes it so that the parameter is optional. We can still run test code
+        // that doesn't use this
         template <FormulationType Formulation>
-        void SingularInteractions(std::vector<std::complex<double>> & density) {
+        void SingularInteractions(std::vector<std::complex<double>> & density, 
+        const std::optional<std::vector<std::unordered_set<long long>>>& sort_sing_point = std::nullopt) {
 
             long long old_mortonbox = -1;
             std::vector<long long> neighbours;
@@ -643,9 +646,16 @@ class BoxTree
 
                     for (long long sourceiter = 0; sourceiter < npoints; sourceiter++) {
 
-                        // TODO: ADD HERE IF NEAR SINGULAR
+                    
                         if (points_begin + sourceiter == i)
                             continue;
+                        
+                        // Skip past singular/near singular points
+                        if (sort_sing_point.has_value()) {
+                            if (sort_sing_point.value()[i].count(points_begin + sourceiter) != 0) {
+                                continue;
+                            }
+                        }
 
                         double locx = x_[points_begin + sourceiter];
                         double locy = y_[points_begin + sourceiter];
@@ -982,10 +992,9 @@ class BoxTree
 
         }
 
-        // template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>),
-        //           std::complex<double> _factorization(const double)>
         template <FormulationType Formulation>
-        void Solve(const bool with_singular_interactions, std::vector<std::complex<double>> & density) {
+        void Solve(const bool with_singular_interactions, std::vector<std::complex<double>> & density, 
+         const std::optional<std::vector<std::unordered_set<long long>>>& sort_sing_point_opt = std::nullopt) {
 
             if (nlevels_ < 3)
                 throw std::invalid_argument("IFGF accelerator requires at least 3 levels.");
@@ -996,18 +1005,12 @@ class BoxTree
 
             ZeroSolution();
 
-            // TODO SPEEDUP: If we sort the points in the RP method according to the morton order
-            // then we don't have to do all this sorting here. However, it is easier to track
-            // and debug this way, especially when assigning the quadrature and jacobian weights.
-            // This leads to O(N) extra work every iteration, although there is of a necessity
-            // non-contiguous memory access pattern in this operation.
-
             // Put the density in the correct order of the points.
             SortDensity(density);
 
 
             if (with_singular_interactions) 
-                SingularInteractions<Formulation>(density);
+                SingularInteractions<Formulation>(density, sort_sing_point_opt);
 
             LevelDEvaluations<Formulation>(density);
 
@@ -1095,6 +1098,10 @@ class BoxTree
                 }
 
         }
+    }
+
+    const std::vector<long long>& getSorting() const {
+        return sorting_;
     }
 
 };

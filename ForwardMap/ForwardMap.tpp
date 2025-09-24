@@ -434,15 +434,21 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_sort_sing_point(const st
     }
 }
 
-// template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-// Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
-//     (Eigen::VectorXcd& density, std::complex<double> wavenumber) {
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
+    (Eigen::VectorXcd& density, std::complex<double> wavenumber) {
 
-//     Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
+    Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
     
-//     compute_intensities(density);
+    compute_intensities(density);
 
-//     return;
+    boxes_->Solve<Formulation>(true, density, sort_sing_point_);
+
+    Eigen::Map<Eigen::VectorXcd> ns(density.data(), density.size());
+
+    sns += ns;
+
+    return sns;
    
-//  }
+ }
 
