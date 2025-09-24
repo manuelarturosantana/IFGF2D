@@ -3,6 +3,8 @@
 #include <vector>
 #include <memory>
 #include <optional> // Allows us to construct box tree after points are determined
+#include <unordered_set>
+#include <unordered_map>
 
 
 
@@ -19,6 +21,8 @@ Potential Future Improvements
          If the gss part becomes much to slow
     --> We may want two versions of the Green Function. One for sing/nearsing interactions that
         takes into account cancelation errors, and one for IFGF which doesn't need to account for such errors
+    --> *** Automatic selection of delta parameter
+    --> *** Automatic determination of number of boxes
 */
 
 /* 
@@ -26,6 +30,7 @@ Current assumptions to watch out for
     1. The number of points in each patch is the same. Will need to change the dermination
         of the near singular points if this changes. Actually will need each patch to store NP.
         Also will need to change IFGF checking if the sing/near sing points are in the neighborhood.
+        Also init_sort_sing_point
     2. Currently the Morton box codes only go to 16 levels, which is about k = 512 we add a level
        everytime we double the wave number. The splitby2 and mergeFrom2 functions in IFGF_Source/Level.h 
        will need to be modified, as well as changing long longs to __uint128_t to make this work.
@@ -65,7 +70,10 @@ class ForwardMap {
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
 
-        std::optional<BoxTree<Ps, Pang>> BoxTree_;
+        std::optional<BoxTree<Ps, Pang>> boxes_;
+
+        // Tracks, in mortoned sorted order, which points do the singular/near singular computation
+        std::vector<std::unordered_set<long long>> sort_sing_point_;
         
 
         
@@ -127,6 +135,10 @@ class ForwardMap {
         /// @param wavenumber The wave number to solve at
         /// @param nlevels The number of levels to use in IFGF
         void precomps_and_setup(std::complex<double> wavenumber, int nlevels); 
+        
+        /// @brief Initializes the tracking of singular/near singular points
+        /// @param sorting The sorting vector from Boxtree
+        void init_sort_sing_point(const std::vector<long long>& sorting);
 
 
         /// @brief Compute the forward map Ax = b with IFGF 

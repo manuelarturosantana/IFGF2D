@@ -391,14 +391,47 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::compl
      
     compute_precomputations(wavenumber);
 
-    BoxTree_.emplace(xs_, ys_, nxs_, nys_, nlevels, wavenumber);
+    boxes_.emplace(xs_, ys_, nxs_, nys_, nlevels, wavenumber);
 
     auto start = std::chrono::high_resolution_clock::now();
-    BoxTree_->CheckIfSingandNearSingInNeighborhood(xs_, ys_, patches_);
+    boxes_->CheckIfSingandNearSingInNeighborhood(xs_, ys_, patches_);
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken to check sing and near sing in neighborhood: " << elapsed.count() << std::endl;
 
+    start = std::chrono::high_resolution_clock::now();
+    init_sort_sing_point(boxes_->getSorting());
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    std::cout << "Time taken to compute sort sing point: " << elapsed.count() << std::endl;
+
+}
+
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_sort_sing_point(const std::vector<long long>& sorting) {
+    sort_sing_point_.resize(total_num_unknowns_);
+
+    for (int patch_idx = 0; patch_idx < num_patches_; ++patch_idx) {
+        // Build a single unordered_set for this patch
+        std::unordered_set<long long> patch_set;
+
+        int patch_point_start = patch_idx * Np;
+
+        // Insert all points in the patch
+        for (int j = patch_point_start; j < patch_point_start + Np; ++j) {
+            patch_set.insert(sorting[j]);
+        }
+
+        // Insert near singular points for this patch
+        for (long long j : patches_[patch_idx].near_singular_point_indices_) {
+            patch_set.insert(sorting[j]);
+        }
+
+        // Copy the same set to all points in this patch
+        for (int i = patch_point_start; i < patch_point_start + Np; ++i) {
+            sort_sing_point_[i] = patch_set;  // copy assignment
+        }
+    }
 }
 
 // template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
