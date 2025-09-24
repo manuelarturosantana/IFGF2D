@@ -15,6 +15,7 @@
 
 #include "../utils/DebugUtils.hpp"
 #include "../ForwardMap/GreenFunctions.hpp"
+#include "../Geometry/Patch.hpp"
 
 // class Level;
 
@@ -35,7 +36,7 @@ class BoxTree
         std::vector<double> ny_;
         std::vector<long long> sorting_; // List as map to go from oringinal ordering to morton box ordering
         int nlevels_;
-        double wavenumber_;
+        std::complex<double> wavenumber_;
         long long N_; // Total number of points in IFGF.
 
         // int P_;
@@ -947,11 +948,33 @@ class BoxTree
 
         }
 
+        // Util to determing if x and y are in the Level D neighborhood provided
+        bool inline IsInLevelDNeighborhood(double xtest, double ytest, const std::vector<long long>& neighbours) {
+
+            bool in_neighborhood = false;
+
+            const long long testmortonbox = levels_.back()->Point2Morton(xtest, ytest);
+
+            for (size_t neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
+
+                    const long long neighbourmorton = neighbours[neighbouriter];
+
+                    if (neighbourmorton == testmortonbox) {
+                        in_neighborhood = true;
+                        break;
+                    }
+                        
+
+                }
+
+            return in_neighborhood;
+        }
+
     public:
 
     // The initializer list x_(x) syntax means x is copied into x_(x), unless x_ is a reference.
         BoxTree(const std::vector<double>& x, const std::vector<double>& y, 
-            const std::vector<double> & nx, const std::vector<double> ny, int nlevels, double wavenumber):
+            const std::vector<double> & nx, const std::vector<double> ny, int nlevels, std::complex<double> wavenumber):
         x_(x), y_(y), nx_(nx), ny_(ny), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size())
         {
 
@@ -1011,6 +1034,68 @@ class BoxTree
             }
 
         }
+
+        /// @brief Given patches from Forward solver, holding their singular and near singular points
+        /// runs a check to ensure that all singular/ near singular points are in the neighborhood
+        /// of each point
+        /// @param xrp, yrp The x and y values stored in the rectangular polar ordering.
+        /// @param patches Patches initialized with near singular points from Forward Map
+        /// WARNING: Currently assumes that the number of points in each patch is the same
+        template <int Nroot> 
+        void CheckIfSingandNearSingInNeighborhood(const std::vector<double>& xrp, const std::vector<double>& yrp, 
+            const std::vector<Patch<Nroot>>& patches) {
+
+            long long old_mortonbox = -1;
+            std::vector<long long> neighbours;
+            int n_points_per_patch = patches[0].point_t_vals_.size();
+
+
+            for (long long i = 0; i < N_; i++) {
+
+                // index of the point in the rectangular polar sorting
+                int patch_ind = i / n_points_per_patch;
+   
+
+                const long long mortonbox = levels_.back()->Point2Morton(xrp[i], yrp[i]);
+
+                if (mortonbox != old_mortonbox) {
+
+                    neighbours = levels_.back()->GetNeighbours(mortonbox);
+
+                    if (neighbours.size() > 9)
+                        throw std::logic_error("Cannot have more than 9 neighbours.");
+                    
+                    old_mortonbox = mortonbox;
+
+                }
+
+                int patch_points_start = patch_ind * n_points_per_patch;
+
+                for (int j = patch_points_start; j < patch_points_start + n_points_per_patch; j++) {
+                    if (j == i) continue;
+
+                    if (!IsInLevelDNeighborhood(xrp[j], yrp[j], neighbours)) {
+                        std::cout << "Rectangular polar singular patch " << patch_ind << " point at index " << j << 
+                                " is not in the neighborhood of point " << i << std::endl;
+                        std::cout << "Point who's neighborhood is being checked x: " << xrp[i] << " y:" << yrp[i] << std::endl;
+                        std::cout << "Singular point not in neighborhood point x: " << xrp[j] << " y:" << yrp[j] << std::endl;
+                        throw std::logic_error("Singular point not in neighborhood");
+                    }
+                }
+
+                for (const long long point_ind : patches[patch_ind].near_singular_point_indices_) {
+                        
+                    if (!IsInLevelDNeighborhood(xrp[point_ind], yrp[point_ind], neighbours)) {
+                        std::cout << "Rectangular polar near singular patch " << patch_ind << " point at index " << point_ind << 
+                                " is not in the neighborhood of point " << i << std::endl;
+                        std::cout << "Point who's neighborhood is being checked x: " << xrp[i] << " y:" << yrp[i] << std::endl;
+                        std::cout << "Singular point not in neighborhood point x: " << xrp[point_ind] << " y:" << yrp[point_ind] << std::endl;
+                        throw std::logic_error("Near singular point not in neighborhood");
+                    }
+                }
+
+        }
+    }
 
 };
 

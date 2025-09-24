@@ -9,9 +9,9 @@
 #include "../utils/BrentsMethod.hpp"
 
 
-template <int Np, FormulationType Formulation, int Nroot>
-ForwardMap<Np, Formulation, Nroot>::ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
-    double patch_split_wavenumber, int near_singular_patch_est, double p) :
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+ForwardMap<Np, Formulation, Ps, Pang, Nroot>::ForwardMap(double delta, ClosedCurve& curve, 
+    double wavelengths_per_patch, double patch_split_wavenumber, int near_singular_patch_est, double p) :
         delta_(delta), curve_(curve), near_singular_patch_est_(near_singular_patch_est), p_(p)
 {   
     // Precompute Quadrature nodes and weights for non-singular integration
@@ -35,8 +35,8 @@ ForwardMap<Np, Formulation, Nroot>::ForwardMap(double delta, ClosedCurve& curve,
 
 }
 
-template <int Np, FormulationType Formulation, int Nroot>
-void ForwardMap<Np, Formulation, Nroot>::init_points_and_patches(ClosedCurve& curve, 
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(ClosedCurve& curve, 
     double wavelengths_per_patch, double wavenumber) {
 
     std::vector<double> patch_lims = curve.compute_patch_lims(wavelengths_per_patch, wavenumber);
@@ -46,9 +46,11 @@ void ForwardMap<Np, Formulation, Nroot>::init_points_and_patches(ClosedCurve& cu
 
     patches_.clear(); patches_.reserve(num_patches_);
 
-    xs_.clear(); ys_.clear(); 
+    xs_.clear(); ys_.clear(); nxs_.clear(); nys_.clear();
     xs_.reserve(num_patches_ * total_num_unknowns_); 
     ys_.reserve(num_patches_ * total_num_unknowns_);
+    nxs_.reserve(num_patches_ * total_num_unknowns_); 
+    nys_.reserve(num_patches_ * total_num_unknowns_); 
 
     for (long long ii = 0; ii < num_patches_; ii++) {
         patches_.emplace_back(patch_lims[ii], patch_lims[ii + 1], curve, delta_);
@@ -64,16 +66,24 @@ void ForwardMap<Np, Formulation, Nroot>::init_points_and_patches(ClosedCurve& cu
 
             patches_[ii].point_t_vals_.push_back(t_curr);
 
-            patches_[ii].curve_jac(jj) = curve_.normal_t(t_curr).norm();
+            Eigen::Vector2d normal = curve_.normal_t(t_curr);
+
+            double normal_norm = normal.norm();
+
+            patches_[ii].curve_jac(jj) = normal_norm;
+
+            normal = normal / normal_norm;
 
             xs_.push_back(curve.xt(t_curr));
             ys_.push_back(curve.yt(t_curr));
+            nxs_.push_back(normal(0));
+            nys_.push_back(normal(1));
         }
     }
 }
 
-template <int Np, FormulationType Formulation, int Nroot>
-void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() {
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::determine_patch_near_singular_points() {
     for (long long ii = 0; ii < num_patches_; ii++) {
     // Pointer to the current patch to test the near singular points.
     Patch<Nroot>* p_tp = &patches_[ii];
@@ -154,8 +164,8 @@ void ForwardMap<Np, Formulation, Nroot>::determine_patch_near_singular_points() 
     }
 }
 
-template <int Np, FormulationType Formulation, int Nroot>
-Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_precomputations
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_point_compute_precomputations
     (const Patch<Np>& patch, double tsing, double xsing, double ysing,
         std::complex<double> wave_number, Eigen::Ref<Eigen::VectorXcd> out_precomps) {
 
@@ -243,8 +253,8 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::single_patch_point_compute_
 
 }
 
-template <int Np, FormulationType Formulation, int Nroot>
-void ForwardMap<Np, Formulation, Nroot>::compute_precomputations(std::complex<double> wavenumber) {
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_precomputations(std::complex<double> wavenumber) {
     // Loop over patches
     for (long long ii = 0; ii < num_patches_; ii++) {
         Patch<Nroot>& patch = patches_[ii];
@@ -277,8 +287,8 @@ void ForwardMap<Np, Formulation, Nroot>::compute_precomputations(std::complex<do
     
 }
 
-template <int Np, FormulationType Formulation, int Nroot>
-void ForwardMap<Np, Formulation, Nroot>::compute_intensities(Eigen::VectorXcd& density) {
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_intensities(Eigen::VectorXcd& density) {
  
     for (long long ii = 0; ii < num_patches_; ii++) {
  
@@ -290,8 +300,8 @@ void ForwardMap<Np, Formulation, Nroot>::compute_intensities(Eigen::VectorXcd& d
 }
 
 
-template <int Np, FormulationType Formulation, int Nroot>
-Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::
     compute_non_singular_interactions_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number) {
 
     Eigen::VectorXcd out = Eigen::VectorXcd::Zero(Np * num_patches_);
@@ -315,13 +325,11 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::
                     for (int ii = 0; ii < Np; ii++) {
                         double xsource = xs_[Np * pind2 + ii];
                         double ysource = ys_[Np * pind2 + ii];
+                        double xnsource = nxs_[Np * pind2 + ii];
+                        double ynsource = nys_[Np * pind2 + ii];
 
-                        // TODOSPEEDUP: Precompute the normal at each point
-                        Eigen::Vector2d normal = 
-                            curve_.normal_t(patches_[pind2].point_t_vals_[ii]);
-
-                        green(ii) = GF<Formulation>(xtarg, ytarg, xsource, ysource, normal(0), normal(1),
-                            eta_, wave_number);
+                        green(ii) = GF<Formulation>(xtarg, ytarg, xsource, ysource, 
+                            xnsource, ynsource, eta_, wave_number);
 
                     }
                     
@@ -335,8 +343,8 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::
 }
 
 
-template <int Np, FormulationType Formulation, int Nroot>
-Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_interactions
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_sing_near_sing_interactions
     (Eigen::VectorXcd& density) { 
     
     Eigen::VectorXcd out = Eigen::VectorXcd::Zero(Np * num_patches_);
@@ -363,8 +371,8 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_sing_near_sing_inte
     return out;
 }
 
-template <int Np, FormulationType Formulation, int Nroot>
-Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_Ax_unacc
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
     (Eigen::VectorXcd& density, std::complex<double> wave_number) {
         
         // This must go before computing the intensities, as compute intensities includes the integration weights.
@@ -377,3 +385,31 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Nroot>::compute_Ax_unacc
         sns += ns;
         return sns;
 }
+
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::complex<double> wavenumber, int nlevels) {
+     
+    compute_precomputations(wavenumber);
+
+    BoxTree_.emplace(xs_, ys_, nxs_, nys_, nlevels, wavenumber);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    BoxTree_->CheckIfSingandNearSingInNeighborhood(xs_, ys_, patches_);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "Time taken to check sing and near sing in neighborhood: " << elapsed.count() << std::endl;
+
+}
+
+// template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+// Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
+//     (Eigen::VectorXcd& density, std::complex<double> wavenumber) {
+
+//     Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
+    
+//     compute_intensities(density);
+
+//     return;
+   
+//  }
+

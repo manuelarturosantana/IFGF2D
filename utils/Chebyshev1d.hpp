@@ -24,7 +24,6 @@ namespace Cheb1D {
     {
         std::array<double, N> x{};
 
-        #pragma unenroll        
         for (int i = 0; i < N; i++) {  
             // Convention that we go from 1 to -1
             x[i] = std::cos(M_PI*(2.0*i+1.0)/(2.0*N));
@@ -42,7 +41,6 @@ namespace Cheb1D {
         ret[0] = 1.0;
         ret[1] = x;
 
-        #pragma unenroll
         for (int i = 2; i < SIZE; i++) {
 
             ret[i] = 2.0*x*ret[i-1] - ret[i-2];
@@ -59,8 +57,7 @@ namespace Cheb1D {
         const std::array<double, N> x = setup_chebyshev_points<N>();
 
         std::array<std::array<double, N>, N > polys{};
-
-        #pragma unenroll        
+        
         for (int i = 0; i < N; i++) {
 
             polys[0][i] = 1.0;
@@ -68,7 +65,6 @@ namespace Cheb1D {
         
         }
 
-        #pragma unenroll
         for (int n = 2; n < N; n++) {
 
             for (int i = 0; i < N; i++) {

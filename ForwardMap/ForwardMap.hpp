@@ -2,11 +2,13 @@
 
 #include <vector>
 #include <memory>
+#include <optional> // Allows us to construct box tree after points are determined
 
 
 
 #include "../Geometry/Patch.hpp"
 #include "GreenFunctions.hpp"
+#include "../IFGF_Source/BoxTree.h"
 
 /*
 Potential Future Improvements
@@ -22,8 +24,11 @@ Potential Future Improvements
 /* 
 Current assumptions to watch out for
     1. The number of points in each patch is the same. Will need to change the dermination
-        of the near singular points if this changes. Actually will need each patch to store NP
-
+        of the near singular points if this changes. Actually will need each patch to store NP.
+        Also will need to change IFGF checking if the sing/near sing points are in the neighborhood.
+    2. Currently the Morton box codes only go to 16 levels, which is about k = 512 we add a level
+       everytime we double the wave number. The splitby2 and mergeFrom2 functions in IFGF_Source/Level.h 
+       will need to be modified, as well as changing long longs to __uint128_t to make this work.
 */
 
 
@@ -32,7 +37,7 @@ Current assumptions to watch out for
 /// @tparam Np Number of points to use per patch for integration
 /// @tparam Formulation: Which Green's function formulation to use.
 /// @tparam Nroot number of points to used in bounding box computation of patches
-template <int Np, FormulationType Formulation, int Nroot = 10>
+template <int Np, FormulationType Formulation, int Ps = 5, int Pang = 5, int Nroot = 10>
 class ForwardMap {
     public:
         std::vector<Patch<Nroot>> patches_; 
@@ -51,12 +56,17 @@ class ForwardMap {
         
         std::vector<double> xs_; // x and y coordinates of all points on all patches.
         std::vector<double> ys_;
+        std::vector<double> nxs_; // x and y coordinates of the unit normal vector
+        std::vector<double> nys_;
 
         Eigen::ArrayXd fejer_nodes_;
         Eigen::ArrayXd fejer_weights_;
 
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
+
+        std::optional<BoxTree<Ps, Pang>> BoxTree_;
+        
 
         
         ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
@@ -112,12 +122,19 @@ class ForwardMap {
 
         /// @brief Compute the forward map Ax = b without IFGF
         Eigen::VectorXcd compute_Ax_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number);
+        
+        /// @brief Compute IFGF Precomputations and BoxTree set up
+        /// @param wavenumber The wave number to solve at
+        /// @param nlevels The number of levels to use in IFGF
+        void precomps_and_setup(std::complex<double> wavenumber, int nlevels); 
+
+
+        /// @brief Compute the forward map Ax = b with IFGF 
+        Eigen::VectorXcd compute_Ax_acc(Eigen::VectorXcd& density, std::complex<double> wave_number);
 
         // Other functions to implement:
-        // Compute intensities: Take in the density and multiply by the correct weights/jacobians
         // compute_forward_map: Send x -> Ax by (Take in k as an argument)
             // Computing the Singular / Near singular interactions
-            // Computing the intensities and doing the direct sum
             // Eventually going to include IFGF
 
 };
