@@ -180,8 +180,8 @@ int main()
 
     try {
 
-        constexpr FormulationType ftype = FormulationType::ThreeD;
-        const long long N = 100;
+        constexpr FormulationType ftype = FormulationType::SingleLayer;
+        const long long N = 10000;
         const int nlevels = 4;
 
         const bool compute_singular_interactions = true;
@@ -196,7 +196,7 @@ int main()
         std::vector<double> pointsny(pointsy);
 
         auto setup_start = std::chrono::high_resolution_clock::now();
-        BoxTree boxes(pointsx, pointsy, pointsnx, pointsny, nlevels, wavenumber_);
+        BoxTree<5,7> boxes(pointsx, pointsy, pointsnx, pointsny, nlevels, wavenumber_);
         auto setup_end = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> setup_elapsed = setup_end - setup_start;
         std::cout << "Setup time: " << setup_elapsed.count() << " seconds\n";
@@ -215,7 +215,11 @@ int main()
 
         if (compute_error) {    
 
+            auto error_start = std::chrono::high_resolution_clock::now();
             double error = ComputeError<ftype>(intensities, pointsx, pointsy, tmpintensities);
+            auto error_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> error_elapsed = error_end - error_start;
+            std::cout << "Error comp time: " << error_elapsed.count() << " seconds\n";
 
             std::cout << "L2 Error = " << error << std::endl;
 

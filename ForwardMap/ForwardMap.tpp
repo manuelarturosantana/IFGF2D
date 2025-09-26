@@ -457,17 +457,32 @@ const std::vector<long long>& inverse) {
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
     (Eigen::VectorXcd& density, std::complex<double> wavenumber) {
-
-    Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
     
+    auto start = std::chrono::high_resolution_clock::now();
+    Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "time for compute sing near sing interactions " << elapsed.count() << std::endl;
+    
+    start = std::chrono::high_resolution_clock::now();
     compute_intensities(density);
-
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    std::cout << "time for compute intensities " << elapsed.count() << std::endl;
 
     // TODO: Speedup This makes a deep copy since vector always owns its data.
     // Could speed up by rewriting boxtree to take Eigen::VectorXcd
+    start = std::chrono::high_resolution_clock::now();
     std::vector<std::complex<double>> v_density(density.data(), density.data() + density.size());
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    std::cout << "time for deep copy of Eigen::vector to std;:vector " << elapsed.count() << std::endl;
     
+    start = std::chrono::high_resolution_clock::now();
     boxes_->template Solve<Formulation>(true, v_density, sort_sing_point_);
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    std::cout << "time for boxtree solve " << elapsed.count() << std::endl;
 
     Eigen::Map<Eigen::VectorXcd> ns(v_density.data(), v_density.size());
 
