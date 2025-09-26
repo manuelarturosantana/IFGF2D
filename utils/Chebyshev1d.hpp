@@ -30,7 +30,8 @@ namespace Cheb1D {
             
         }   
 
-        return std::move(x); 
+        // Used std::move before switching to C++ 17
+        return x; 
 
     }
 
@@ -75,7 +76,7 @@ namespace Cheb1D {
         
         }
 
-        return std::move(polys);
+        return polys;
         
     }
 

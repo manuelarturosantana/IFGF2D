@@ -38,7 +38,14 @@ template <int N>
 class Patch {
     public:
         double t1, t2; // Limits in parameterization of the curve.
+
+        // Storing the curve as a reference means we must guarantee that the curve passed 
+        // in outlives all the patch objects that use it. If this is an issue
+        // Consider using std::shared_ptr instead.
+        ClosedCurve& curve_;
+
         double delta;  // RP near singularity parameter
+        
         bool ist1open, ist2open;  // Tracks if patch has open endpts
         bool ist1corner, ist2corner; // Tracks it patch has corner endpoints
 
@@ -61,10 +68,7 @@ class Patch {
         // A set for checking if a point is near singular. 
         std::unordered_set<long long> near_singular_point_lookup_; 
 
-        // Storing the curve as a reference means we must guarantee that the curve passed 
-        // in outlives all the patch objects that use it. If this is an issue
-        // Consider using std::shared_ptr instead.
-        ClosedCurve& curve_;
+
 
         // Hash table checking with keys at point index, and values as location of 
         // of start of precomputations in near singular precomputations

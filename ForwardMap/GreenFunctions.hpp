@@ -97,8 +97,13 @@ std::complex<double> inline GF(const double p1x, const double p1y,
 
 }
 
+// TODO SPEEDUP: Consider using cosine and sine to compute this
+// As well as returning the inverse already computed 
 std::complex<double> inline static factorization(const double distance, std::complex<double> wavenumber)
 {
     static constexpr std::complex<double> imag_unit (0,1.0);
     return std::exp(imag_unit * wavenumber * distance) / distance;
+
+    // static constexpr std::complex<double> imag_unit (0,1.0);
+    // return std::exp(imag_unit * wavenumber * distance) / std::sqrt(distance);
 } 

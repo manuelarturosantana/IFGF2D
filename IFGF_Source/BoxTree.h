@@ -36,6 +36,11 @@ class BoxTree
         std::vector<double> nx_;
         std::vector<double> ny_;
         std::vector<long long> sorting_; // List as map to go from oringinal ordering to morton box ordering
+        // Inverse permutation for which sorting[inverse[i]] = i;
+        // Since we have x[i] = x_orig[sorting[i]] letting i = inverse[i] we get
+        // in particular x_orig[i] = x[inverse[i]]
+        std::vector<long long> inverse_;
+
         int nlevels_;
         std::complex<double> wavenumber_;
         long long N_; // Total number of points in IFGF.
@@ -97,6 +102,10 @@ class BoxTree
             arrange_in_sorted_order(sorting_, y_);
             arrange_in_sorted_order(sorting_, nx_);
             arrange_in_sorted_order(sorting_, ny_);
+            
+            for (size_t i = 0; i < sorting_.size(); i++) {
+                inverse_[sorting_[i]] = i;
+            }
 
         }
 
@@ -615,7 +624,17 @@ class BoxTree
             long long npoints = 0;
             long long points_begin = 0;
 
+            // DEBUG
+            // std::cout << "Box tree \n";
+            // std::cout << "N_" << N_ << std::endl;
+            // for (int i = 0; i < 10; i++) {
+            //     std::cout << i <<" in set: " << sort_sing_point.value()[1].count(i) << std::endl;
+            // }
+
+
             for (long long i = 0; i < N_; i++) {
+
+   
 
                 const long long mortonbox = levels_.back()->Point2Morton(x_[i], y_[i]);
 
@@ -623,6 +642,11 @@ class BoxTree
 
                 const double x = x_[i];
                 const double y = y_[i];
+
+                if (i == 118) {
+                    std::cout << "si x :" << x << std::endl;
+                    std::cout << "si y :" << y << std::endl;
+                }
 
                 if (mortonbox != old_mortonbox) {
 
@@ -635,9 +659,29 @@ class BoxTree
 
                 }
 
+                // std::cout << "target i=" << i << std::endl;
+                // std::cout << "num neighbors " << neighbours.size() << std::endl;
+                // if (i == 85) {
+                //     for (int jj = 0; jj < 200; jj++) {
+                //         if (sort_sing_point.value()[i].count(jj) > 0) {
+                //             std::cout << "118 singular to " << jj << std::endl;
+                //         }
+                        
+                //     }
+                // }
+
+                // if (i == 118) {
+                //     std::cout << "SI 118 morton box " << mortonbox << std::endl;
+                //     std::cout << "SI Num neighbors " << neighbours.size() << std::endl;
+                // }
+
                 for (size_t neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
 
                     const long long neighbourmorton = neighbours[neighbouriter];
+
+                    // if (i == 118) {
+                    //     std::cout << "SI 118 neighbor " << neighbourmorton << std::endl;
+                    // }
 
                     const std::array<long long, 2> & points_data = levels_.back()->mortonbox2discretizationpoints_.at(neighbourmorton);
 
@@ -646,13 +690,24 @@ class BoxTree
 
                     for (long long sourceiter = 0; sourceiter < npoints; sourceiter++) {
 
+                        // if (i == 118) {
+                        //     std::cout << "Target i=" << i << " source iter " << sourceiter 
+                        //     << " checking " << (points_begin + sourceiter) 
+                        //     << " set size=" << sort_sing_point.value()[i].size() 
+                        //     << std::endl;
+                        // }
                     
                         if (points_begin + sourceiter == i)
                             continue;
-                        
+
                         // Skip past singular/near singular points
                         if (sort_sing_point.has_value()) {
+                            // TODO: SPEEDPUT DON"T COPY THIS??
                             if (sort_sing_point.value()[i].count(points_begin + sourceiter) != 0) {
+                                //debug
+                                if (i == 118) {
+                                    std::cout << "Comp_sing_intera Skipping target " << i << " source " << points_begin + sourceiter << std::endl;
+                                }
                                 continue;
                             }
                         }
@@ -985,7 +1040,7 @@ class BoxTree
     // The initializer list x_(x) syntax means x is copied into x_(x), unless x_ is a reference.
         BoxTree(const std::vector<double>& x, const std::vector<double>& y, 
             const std::vector<double> & nx, const std::vector<double> ny, int nlevels, std::complex<double> wavenumber):
-        x_(x), y_(y), nx_(nx), ny_(ny), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size())
+        x_(x), y_(y), nx_(nx), ny_(ny), inverse_(x_.size()), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size())
         {
 
             Initialize();
@@ -1052,11 +1107,16 @@ class BoxTree
             std::vector<long long> neighbours;
             int n_points_per_patch = patches[0].point_t_vals_.size();
 
-
+            // For each point, check if each point in its patch is in its neighborhood
             for (long long i = 0; i < N_; i++) {
 
                 // index of the point in the rectangular polar sorting
                 int patch_ind = i / n_points_per_patch;
+
+                // if (sorting_[i] == 118) {
+                //     std::cout << " x :" << xrp[i] << std::endl;
+                //     std::cout << " y :" << yrp[i] << std::endl;
+                // }
    
 
                 const long long mortonbox = levels_.back()->Point2Morton(xrp[i], yrp[i]);
@@ -1074,7 +1134,18 @@ class BoxTree
 
                 int patch_points_start = patch_ind * n_points_per_patch;
 
+                if (inverse_[i] == 118) {
+                    std::cout << "118 morton box " << mortonbox << std::endl;
+                    std::cout << "Num neighbors " << neighbours.size() << std::endl;
+                    for (size_t neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
+                        std::cout << "118 Neighbour " << neighbours[neighbouriter] << std::endl;
+                    }
+                }
+
                 for (int j = patch_points_start; j < patch_points_start + n_points_per_patch; j++) {
+                    if (inverse_[i] == 118) {
+                        std::cout << "118 patch point: " << sorting_[j] << std::endl;
+                    }
                     if (j == i) continue;
 
                     if (!IsInLevelDNeighborhood(xrp[j], yrp[j], neighbours)) {
@@ -1085,24 +1156,56 @@ class BoxTree
                         throw std::logic_error("Singular point not in neighborhood");
                     }
                 }
+            }
 
-                for (const long long point_ind : patches[patch_ind].near_singular_point_indices_) {
+            old_mortonbox = -1;
+
+            // For each point near singular to a patch, check if each point in that patch is 
+            // in the neighborhood of that point
+            for (long long patch_ind = 0; patch_ind < patches.size(); patch_ind++) {
+
+                int patch_points_start = patch_ind * n_points_per_patch;
+
+                for (const long long ns_point_ind : patches[patch_ind].near_singular_point_indices_) {
+
+                    const long long mortonbox = levels_.back()->Point2Morton(xrp[ns_point_ind], yrp[ns_point_ind]);
+
+                    if (mortonbox != old_mortonbox) {
+
+                        neighbours = levels_.back()->GetNeighbours(mortonbox);
+
+                        if (neighbours.size() > 9)
+                            throw std::logic_error("Cannot have more than 9 neighbours.");
                         
-                    if (!IsInLevelDNeighborhood(xrp[point_ind], yrp[point_ind], neighbours)) {
-                        std::cout << "Rectangular polar near singular patch " << patch_ind << " point at index " << point_ind << 
-                                " is not in the neighborhood of point " << i << std::endl;
-                        std::cout << "Point who's neighborhood is being checked x: " << xrp[i] << " y:" << yrp[i] << std::endl;
-                        std::cout << "Singular point not in neighborhood point x: " << xrp[point_ind] << " y:" << yrp[point_ind] << std::endl;
-                        throw std::logic_error("Near singular point not in neighborhood");
+                        old_mortonbox = mortonbox;
+
                     }
+
+                    for (long long point_ind = patch_points_start; point_ind < patch_points_start + n_points_per_patch; point_ind++) {
+
+                        if (!IsInLevelDNeighborhood(xrp[point_ind], yrp[point_ind], neighbours)) {
+                            std::cout << "Rectangular polar near singular patch " << patch_ind << " point at index " << point_ind << 
+                                    " is not in the neighborhood of point " << ns_point_ind << std::endl;
+                            std::cout << "Point who's neighborhood is being checked x: " << xrp[ns_point_ind] << " y:" << yrp[ns_point_ind] << std::endl;
+                            std::cout << "Near Singular point not in neighborhood point x: " << xrp[point_ind] << " y:" << yrp[point_ind] << std::endl;
+                            throw std::logic_error("Near singular point not in neighborhood");
+                        }
+
+                    }
+
                 }
 
-        }
-    }
+            }
 
-    const std::vector<long long>& getSorting() const {
-        return sorting_;
-    }
+        }
+
+        const std::vector<long long>& getSorting() const {
+            return sorting_;
+        }
+
+        const std::vector<long long>& getInverse() const {
+            return inverse_;
+        }
 
 };
 

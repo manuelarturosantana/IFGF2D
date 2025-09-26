@@ -49,9 +49,11 @@ class ForwardMap {
         long long num_patches_;
         long long total_num_unknowns_;
 
+        double delta_; // Rectangular Polar Near Singularity Parameter
+
         ClosedCurve& curve_;
 
-        double delta_; // Rectangular Polar Near Singularity Parameter
+        
         int near_singular_patch_est_; // Assume all near singular points are in patches only 1 away from this
         double p_; // Parameter in rectangular polar change of variables.
         double eta_ = 0.0;
@@ -72,7 +74,8 @@ class ForwardMap {
 
         std::optional<BoxTree<Ps, Pang>> boxes_;
 
-        // Tracks, in mortoned sorted order, which points do the singular/near singular computation
+        // sort_sing_point_[i] returns a set tracking incides of points j, that are singular
+        // or near singular to the point i. Here the indices i, j are in morton sorted order.
         std::vector<std::unordered_set<long long>> sort_sing_point_;
         
 
@@ -111,7 +114,7 @@ class ForwardMap {
         /// @param out_precomps  The vector or column of an eigenmatrix to be computed.
         /// @return The precomutations as a vector for each point
         Eigen::VectorXcd single_patch_point_compute_precomputations
-            (const Patch<Np>& patch, double tsing, double xsing, double ysing, 
+            (const Patch<Nroot>& patch, double tsing, double xsing, double ysing, 
                  std::complex<double> wave_number, Eigen::Ref<Eigen::VectorXcd> out_precomps);
 
         /// @brief Multiply the density by the curve jacobian and integration weights
@@ -138,7 +141,8 @@ class ForwardMap {
         
         /// @brief Initializes the tracking of singular/near singular points
         /// @param sorting The sorting vector from Boxtree
-        void init_sort_sing_point(const std::vector<long long>& sorting);
+        /// @param inverse The inverse sorting vector from Boxtree
+        void init_sort_sing_point(const std::vector<long long>& sorting, const std::vector<long long>& inverse);
 
 
         /// @brief Compute the forward map Ax = b with IFGF 

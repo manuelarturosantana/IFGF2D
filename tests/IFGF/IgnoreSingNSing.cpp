@@ -7,11 +7,16 @@
 #include <chrono>
 
 
-#include "BoxTree.h"
+#include "../../IFGF_Source/BoxTree.h"
 
-#include "../complex_bessel-master/include/complex_bessel.h"
-#include "../ForwardMap/GreenFunctions.hpp"
-#include "../utils/DebugUtils.hpp"
+#include "../../complex_bessel-master/include/complex_bessel.h"
+#include "../../ForwardMap/GreenFunctions.hpp"
+#include "../../utils/DebugUtils.hpp"
+
+#include "../../ForwardMap/ForwardMap.hpp"
+#include "../../Geometry/ClosedCurve.hpp"
+#include "../../utils/Rhs.hpp"
+#include "../../utils/Chebyshev1d.hpp"
 
 
 
@@ -19,41 +24,6 @@
 int num_f_evals = 0; // Check the number of function evaluations, which experiementally is about N log N :)
 const double wavenumber_ = M_PI;
 const std::complex<double> imag_unit (0,1.0);
-
-// This is the Hankel function case
-// inline static void fct(const double x1, const double x2,
-//                        const double y1, const double y2,
-//                        const double densityreal, const double densityimag, 
-//                        double& phireal, double& phiimag) 
-// {
-
-//     // static constexpr double tmpfactor = 1.0/M_PI/4.0;
-
-//     const double distance = std::sqrt((y1 - x1) * (y1 - x1) + (y2 - x2) * (y2 - x2));
-//     std::complex<double> ker = sp_bessel::hankelH1(0, wavenumber_ * distance);
-//     const double kerreal = std::real(ker);
-//     const double kerimag = std::imag(ker);
-//     // const double distance_inv = 1.0 / distance;
-
-//     // const double kerreal = tmpfactor * cos(wavenumber_ * distance) * distance_inv;
-//     // const double kerimag = tmpfactor * sin(wavenumber_ * distance) * distance_inv;
-
-//     phireal = densityreal * kerreal - densityimag * kerimag;
-//     phiimag = densityreal * kerimag + densityimag * kerreal;
-//     num_f_evals += 1;
-// }
-
-// inline static void fac(const double distance, double& re, double& im)
-// {
-//     // Doing this gives a couple more digits of accuracy
-//     re = cos(wavenumber_ * distance) / std::sqrt(distance);
-//     im = sin(wavenumber_ * distance) / std::sqrt(distance);
-
-//     // re = cos(wavenumber_ * distance);
-//     // im = sin(wavenumber_ * distance);
-    
-
-// } 
 
 inline static std::complex<double> fct(const double x1, const double x2,
                        const double y1, const double y2,
@@ -90,21 +60,12 @@ inline static std::complex<double> fac(const double distance)
 } 
 
 
-void GenerateCircle(const long long npoints, const double r, std::vector<double>& x, std::vector<double>& y) {
 
-    for (long long i = 0; i < npoints; i++) {
-
-        x[i] = r * cos(2 * M_PI / npoints * i);
-        y[i] = r * sin(2 * M_PI / npoints * i);
-
-    }
-
-}
 
 template <FormulationType Formulation>
 double ComputeError(const std::vector<std::complex<double>>& approx, 
-                    const std::vector<double>& x, const std::vector<double>& y,
-                    const std::vector<std::complex<double>>& intensity)
+    const std::vector<double>& x, const std::vector<double>& y, const std::vector<std::complex<double>>& intensity, 
+    std::vector<long long> inverse, std::vector<std::unordered_set<long long>> sort_sing_point)
 {
 
     const long long N = x.size();
@@ -122,6 +83,13 @@ double ComputeError(const std::vector<std::complex<double>>& approx,
 
             if (target_iter == source_iter)
                 continue;
+
+            if (sort_sing_point[inverse[target_iter]].count(inverse[source_iter]) != 0) {
+                if (inverse[target_iter] == 118) {
+                    std::cout << "Comp_true_sol Skipping target " << inverse[target_iter] << " source " << inverse[source_iter] << std::endl;
+                }
+                continue;
+            }
             
             // For our text case normal derivative and coupling paramter are not used.
             exact[target_iter] += GF<Formulation>(x[source_iter], y[source_iter],
@@ -135,6 +103,7 @@ double ComputeError(const std::vector<std::complex<double>>& approx,
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Direct computation time: " << elapsed.count() << " seconds\n";
+
 
     for (long long iter = 0; iter < N; iter++) {
         // Norm returns abs^2, which is what the code was doing
@@ -181,25 +150,34 @@ int main()
     try {
 
         constexpr FormulationType ftype = FormulationType::ThreeD;
-        const long long N = 100;
         const int nlevels = 4;
 
         const bool compute_singular_interactions = true;
         const bool compute_error = true;
 
-        std::vector<double> pointsx(N);
-        std::vector<double> pointsy(N);
+        double delta = 0.000001;
+        double k     = M_PI*10;
+        // double k     = M_PI;
+        double wave_lengths_per_patch = 1;
 
-        GenerateCircle(N, 1.0, pointsx, pointsy);   
+        Circle circle;
+        constexpr int num_points = 5;
+
+        ForwardMap<num_points, FormulationType::SingleLayer> FM(delta, circle, wave_lengths_per_patch, k);
+        int N = FM.total_num_unknowns_;
+        std::cout << "Total num unknowns " << N << std::endl;
+
+        FM.precomps_and_setup(k, nlevels);
+
+
+        std::vector<double> pointsx = FM.xs_;
+        std::vector<double> pointsy = FM.ys_;  
         
         std::vector<double> pointsnx(pointsx);
         std::vector<double> pointsny(pointsy);
 
-        auto setup_start = std::chrono::high_resolution_clock::now();
-        BoxTree boxes(pointsx, pointsy, pointsnx, pointsny, nlevels, wavenumber_);
-        auto setup_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> setup_elapsed = setup_end - setup_start;
-        std::cout << "Setup time: " << setup_elapsed.count() << " seconds\n";
+        BoxTree<10,10> boxes(pointsx, pointsy, pointsnx, pointsny, nlevels, wavenumber_);
+      
 
         std::vector<double> intensities_real = random_vector(N, 0.0, 1.0);
         std::vector<double> intensities_imag(intensities_real);
@@ -207,21 +185,22 @@ int main()
         std::vector<std::complex<double>> intensities = make_complex_vector(intensities_real, intensities_imag);
         std::vector<std::complex<double>> tmpintensities(intensities);
 
-        auto solve_start = std::chrono::high_resolution_clock::now();
-        boxes.Solve<ftype>(compute_singular_interactions, intensities);
-        auto solve_end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> solve_elapsed = solve_end - solve_start;
-        std::cout << "Solve time: " << solve_elapsed.count() << " seconds\n";
+      
+        boxes.Solve<ftype>(compute_singular_interactions, intensities, FM.sort_sing_point_);
+        // boxes.Solve<ftype>(compute_singular_interactions, intensities);
+
 
         if (compute_error) {    
 
-            double error = ComputeError<ftype>(intensities, pointsx, pointsy, tmpintensities);
+            double error = ComputeError<ftype>(intensities, pointsx, pointsy, tmpintensities, boxes.getInverse(), FM.sort_sing_point_);
 
             std::cout << "L2 Error = " << error << std::endl;
 
         }
 
         std::cout << "Number of F evals " << num_f_evals << std::endl;
+
+        // print_vector(boxes.getSorting());
         
     } catch (std::exception& e) {
 

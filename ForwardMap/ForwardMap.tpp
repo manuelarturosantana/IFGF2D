@@ -166,7 +166,7 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::determine_patch_near_singular
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_point_compute_precomputations
-    (const Patch<Np>& patch, double tsing, double xsing, double ysing,
+    (const Patch<Nroot>& patch, double tsing, double xsing, double ysing,
         std::complex<double> wave_number, Eigen::Ref<Eigen::VectorXcd> out_precomps) {
 
     // Set up vector of Cheb left and Cheb right
@@ -399,38 +399,54 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::compl
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken to check sing and near sing in neighborhood: " << elapsed.count() << std::endl;
 
-    start = std::chrono::high_resolution_clock::now();
-    init_sort_sing_point(boxes_->getSorting());
-    end = std::chrono::high_resolution_clock::now();
-    elapsed = end - start;
-    std::cout << "Time taken to compute sort sing point: " << elapsed.count() << std::endl;
+    // start = std::chrono::high_resolution_clock::now();
+    init_sort_sing_point(boxes_->getSorting(), boxes_->getInverse());
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = end - start;
+    // std::cout << "Time taken to compute sort sing point: " << elapsed.count() << std::endl;
 
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_sort_sing_point(const std::vector<long long>& sorting) {
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_sort_sing_point(const std::vector<long long>& sorting, 
+const std::vector<long long>& inverse) {
     sort_sing_point_.resize(total_num_unknowns_);
 
-    for (int patch_idx = 0; patch_idx < num_patches_; ++patch_idx) {
+
+
+    for (int patch_idx = 0; patch_idx < num_patches_; patch_idx++) {
         // Build a single unordered_set for this patch
         std::unordered_set<long long> patch_set;
 
         int patch_point_start = patch_idx * Np;
 
         // Insert all points in the patch
-        for (int j = patch_point_start; j < patch_point_start + Np; ++j) {
-            patch_set.insert(sorting[j]);
-        }
-
-        // Insert near singular points for this patch
-        for (long long j : patches_[patch_idx].near_singular_point_indices_) {
-            patch_set.insert(sorting[j]);
+        for (int i = patch_point_start; i < patch_point_start + Np; i++) {
+            patch_set.insert(inverse[i]);
         }
 
         // Copy the same set to all points in this patch
-        for (int i = patch_point_start; i < patch_point_start + Np; ++i) {
-            sort_sing_point_[i] = patch_set;  // copy assignment
+        for (int i = patch_point_start; i < patch_point_start + Np; i++) {
+            sort_sing_point_[inverse[i]] = patch_set;  // copy assignment
         }
+    }
+
+    // Near singular points. We track the points in that patch which each point is near singular to
+    // which are computed in the precomputations
+    for (int patch_idx = 0; patch_idx < num_patches_; patch_idx++) {
+
+        int patch_point_start = patch_idx * Np;
+
+        for (int i : patches_[patch_idx].near_singular_point_indices_) {
+             
+             // Add all of the points in the patch which the target point x is near singular to
+             for (int j = patch_point_start; j < patch_point_start + Np; j++) {
+
+                sort_sing_point_[inverse[i]].insert(inverse[j]);
+
+             }
+        }
+
     }
 }
 
@@ -442,9 +458,14 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
     
     compute_intensities(density);
 
-    boxes_->Solve<Formulation>(true, density, sort_sing_point_);
 
-    Eigen::Map<Eigen::VectorXcd> ns(density.data(), density.size());
+    // TODO: Speedup This makes a deep copy since vector always owns its data.
+    // Could speed up by rewriting boxtree to take Eigen::VectorXcd
+    std::vector<std::complex<double>> v_density(density.data(), density.data() + density.size());
+    
+    boxes_->template Solve<Formulation>(true, v_density, sort_sing_point_);
+
+    Eigen::Map<Eigen::VectorXcd> ns(v_density.data(), v_density.size());
 
     sns += ns;
 
