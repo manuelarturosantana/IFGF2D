@@ -624,14 +624,6 @@ class BoxTree
             long long npoints = 0;
             long long points_begin = 0;
 
-            // DEBUG
-            // std::cout << "Box tree \n";
-            // std::cout << "N_" << N_ << std::endl;
-            // for (int i = 0; i < 10; i++) {
-            //     std::cout << i <<" in set: " << sort_sing_point.value()[1].count(i) << std::endl;
-            // }
-
-
             for (long long i = 0; i < N_; i++) {
 
    
@@ -642,11 +634,6 @@ class BoxTree
 
                 const double x = x_[i];
                 const double y = y_[i];
-
-                if (i == 118) {
-                    std::cout << "si x :" << x << std::endl;
-                    std::cout << "si y :" << y << std::endl;
-                }
 
                 if (mortonbox != old_mortonbox) {
 
@@ -659,29 +646,9 @@ class BoxTree
 
                 }
 
-                // std::cout << "target i=" << i << std::endl;
-                // std::cout << "num neighbors " << neighbours.size() << std::endl;
-                // if (i == 85) {
-                //     for (int jj = 0; jj < 200; jj++) {
-                //         if (sort_sing_point.value()[i].count(jj) > 0) {
-                //             std::cout << "118 singular to " << jj << std::endl;
-                //         }
-                        
-                //     }
-                // }
-
-                // if (i == 118) {
-                //     std::cout << "SI 118 morton box " << mortonbox << std::endl;
-                //     std::cout << "SI Num neighbors " << neighbours.size() << std::endl;
-                // }
-
                 for (size_t neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
 
                     const long long neighbourmorton = neighbours[neighbouriter];
-
-                    // if (i == 118) {
-                    //     std::cout << "SI 118 neighbor " << neighbourmorton << std::endl;
-                    // }
 
                     const std::array<long long, 2> & points_data = levels_.back()->mortonbox2discretizationpoints_.at(neighbourmorton);
 
@@ -690,13 +657,6 @@ class BoxTree
 
                     for (long long sourceiter = 0; sourceiter < npoints; sourceiter++) {
 
-                        // if (i == 118) {
-                        //     std::cout << "Target i=" << i << " source iter " << sourceiter 
-                        //     << " checking " << (points_begin + sourceiter) 
-                        //     << " set size=" << sort_sing_point.value()[i].size() 
-                        //     << std::endl;
-                        // }
-                    
                         if (points_begin + sourceiter == i)
                             continue;
 
@@ -704,10 +664,6 @@ class BoxTree
                         if (sort_sing_point.has_value()) {
                             // TODO: SPEEDPUT DON"T COPY THIS??
                             if (sort_sing_point.value()[i].count(points_begin + sourceiter) != 0) {
-                                //debug
-                                if (i == 118) {
-                                    std::cout << "Comp_sing_intera Skipping target " << i << " source " << points_begin + sourceiter << std::endl;
-                                }
                                 continue;
                             }
                         }
@@ -731,8 +687,6 @@ class BoxTree
 
         }
 
-        // template <std::complex<double> _kernel(const double, const double, const double, const double, std::complex<double>),
-        //           std::complex<double> _factorization(const double)>
         template <FormulationType Formulation>
         void LevelDEvaluations(std::vector<std::complex<double>> & density) {
 
@@ -1113,12 +1067,6 @@ class BoxTree
                 // index of the point in the rectangular polar sorting
                 int patch_ind = i / n_points_per_patch;
 
-                // if (sorting_[i] == 118) {
-                //     std::cout << " x :" << xrp[i] << std::endl;
-                //     std::cout << " y :" << yrp[i] << std::endl;
-                // }
-   
-
                 const long long mortonbox = levels_.back()->Point2Morton(xrp[i], yrp[i]);
 
                 if (mortonbox != old_mortonbox) {
@@ -1134,18 +1082,8 @@ class BoxTree
 
                 int patch_points_start = patch_ind * n_points_per_patch;
 
-                if (inverse_[i] == 118) {
-                    std::cout << "118 morton box " << mortonbox << std::endl;
-                    std::cout << "Num neighbors " << neighbours.size() << std::endl;
-                    for (size_t neighbouriter = 0; neighbouriter < neighbours.size(); neighbouriter++) {
-                        std::cout << "118 Neighbour " << neighbours[neighbouriter] << std::endl;
-                    }
-                }
-
                 for (int j = patch_points_start; j < patch_points_start + n_points_per_patch; j++) {
-                    if (inverse_[i] == 118) {
-                        std::cout << "118 patch point: " << sorting_[j] << std::endl;
-                    }
+
                     if (j == i) continue;
 
                     if (!IsInLevelDNeighborhood(xrp[j], yrp[j], neighbours)) {

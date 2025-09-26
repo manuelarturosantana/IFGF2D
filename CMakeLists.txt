@@ -38,6 +38,11 @@ add_executable(IFGF_main
 target_link_libraries(IFGF_main PRIVATE ${COMP_BESSEL_PATH})
 target_compile_options(IFGF_main PRIVATE -Wall -Wextra)
 
+add_executable(IgnoreSingNSing
+                ${GEOMETRY_SOURCES} tests/IFGF/IgnoreSingNSing.cpp)
+target_link_libraries(IgnoreSingNSing PRIVATE ${COMP_BESSEL_PATH})
+target_compile_options(IgnoreSingNSing PRIVATE -Wall -Wextra)
+
 
 
 

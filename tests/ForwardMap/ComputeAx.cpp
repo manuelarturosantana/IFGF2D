@@ -16,7 +16,7 @@
 // std::cout << vec.format(customFormat) << std::endl;
 int main() {
     double delta = 0.01;
-    double k     = M_PI*10;
+    double k     = M_PI * 200;
     double wave_lengths_per_patch = 1;
     int m = 3;
     int nlevels = 3;
@@ -24,7 +24,7 @@ int main() {
     Circle circle;
     constexpr int num_points = 10;
 
-    ForwardMap<num_points, FormulationType::SingleLayer, 10, 10> FM(delta, circle, wave_lengths_per_patch, k);
+    ForwardMap<num_points, FormulationType::SingleLayer, 5, 5> FM(delta, circle, wave_lengths_per_patch, k);
 
     std::cout << "Total number of points: " << FM.total_num_unknowns_ << std::endl;
 
@@ -35,32 +35,26 @@ int main() {
     std::cout << "Size of a patch " << FM.patches_[0].point_t_vals_.size() << std::endl;
 
 
-
-
-    // auto start = std::chrono::high_resolution_clock::now();
-    // FM.compute_precomputations(std::complex<double>(k));
-    // auto end   = std::chrono::high_resolution_clock::now();
-    // std::chrono::duration<double> elapsed = end - start;
-    // std::cout << "Time taken to compute precomputations: " << elapsed.count() << std::endl;
-
- 
-    // start = std::chrono::high_resolution_clock::now();
-    // Eigen::VectorXcd Ax = FM.compute_Ax_unacc(RHS,k);
-    // end   = std::chrono::high_resolution_clock::now();
-    // elapsed = end - start;
-    // std::cout << "Time taken to compute Ax " << elapsed.count() << std::endl;
-
     auto start = std::chrono::high_resolution_clock::now();
     FM.precomps_and_setup(k, nlevels);
     auto end   = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
-    std::cout << "Time taken to compute precomputations: " << elapsed.count() << std::endl;
+    std::cout << "Time taken to run precomps and setup: " << elapsed.count() << std::endl;
 
+     
     start = std::chrono::high_resolution_clock::now();
-    Eigen::VectorXcd Ax = FM.compute_Ax_acc(RHS,k);
+    Eigen::VectorXcd Ax_unacc = FM.compute_Ax_unacc(RHS,k);
     end   = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
-    std::cout << "Time taken to compute Ax " << elapsed.count() << std::endl;
+    std::cout << "Time taken to compute Ax Unacc " << elapsed.count() << std::endl;
+
+    RHS = circle_eigenfunction(FM.xs_, FM.ys_, m);
+
+    start = std::chrono::high_resolution_clock::now();
+    Eigen::VectorXcd Ax_acc = FM.compute_Ax_acc(RHS,k);
+    end   = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    std::cout << "Time taken to compute Ax Acc " << elapsed.count() << std::endl;
 
 
     std::complex<double> c_unit(0.0, 1.0);
@@ -70,9 +64,12 @@ int main() {
     std::cout << "Eigenvalue: " << eval << std::endl;
     // The RHS gets changed :(
     RHS = circle_eigenfunction(FM.xs_, FM.ys_, m);
+
+    Eigen::VectorXcd diff = Ax_unacc - (eval * RHS);
+    std::cout << "Error in the Eigenfunction Test Un-acc: " << diff.norm() << std::endl;
    
-    Eigen::VectorXcd diff = Ax - (eval * RHS);
-    std::cout << "Error in the Eigenfunction Test: " << diff.norm() << std::endl;
+    diff = Ax_acc - (eval * RHS);
+    std::cout << "Error in the Eigenfunction Test acc: " << diff.norm() << std::endl;
 
     return 0;
 

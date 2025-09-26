@@ -388,22 +388,26 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::complex<double> wavenumber, int nlevels) {
-     
+    
+    auto start = std::chrono::high_resolution_clock::now();
     compute_precomputations(wavenumber);
+    auto end   = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    std::cout << "Time taken to compute precomputations: " << elapsed.count() << std::endl;
 
     boxes_.emplace(xs_, ys_, nxs_, nys_, nlevels, wavenumber);
 
-    auto start = std::chrono::high_resolution_clock::now();
+    start = std::chrono::high_resolution_clock::now();
     boxes_->CheckIfSingandNearSingInNeighborhood(xs_, ys_, patches_);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
     std::cout << "Time taken to check sing and near sing in neighborhood: " << elapsed.count() << std::endl;
 
-    // start = std::chrono::high_resolution_clock::now();
+    start = std::chrono::high_resolution_clock::now();
     init_sort_sing_point(boxes_->getSorting(), boxes_->getInverse());
-    // end = std::chrono::high_resolution_clock::now();
-    // elapsed = end - start;
-    // std::cout << "Time taken to compute sort sing point: " << elapsed.count() << std::endl;
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    std::cout << "Time taken to compute sort sing point: " << elapsed.count() << std::endl;
 
 }
 
