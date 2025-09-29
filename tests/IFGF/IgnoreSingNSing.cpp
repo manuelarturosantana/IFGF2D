@@ -85,9 +85,9 @@ double ComputeError(const std::vector<std::complex<double>>& approx,
                 continue;
 
             if (sort_sing_point[inverse[target_iter]].count(inverse[source_iter]) != 0) {
-                if (inverse[target_iter] == 118) {
-                    std::cout << "Comp_true_sol Skipping target " << inverse[target_iter] << " source " << inverse[source_iter] << std::endl;
-                }
+                // if (inverse[target_iter] == 118) {
+                //     std::cout << "Comp_true_sol Skipping target " << inverse[target_iter] << " source " << inverse[source_iter] << std::endl;
+                // }
                 continue;
             }
             
@@ -149,25 +149,26 @@ int main()
 
     try {
 
-        constexpr FormulationType ftype = FormulationType::ThreeD;
-        const int nlevels = 4;
+        constexpr FormulationType ftype = FormulationType::SingleLayer;
+        const int nlevels = 3;
 
         const bool compute_singular_interactions = true;
         const bool compute_error = true;
 
-        double delta = 0.000001;
-        double k     = M_PI*10;
+        double delta = 0.01;
+        double k     = M_PI*200;
         // double k     = M_PI;
         double wave_lengths_per_patch = 1;
 
         Circle circle;
-        constexpr int num_points = 5;
+        constexpr int num_points = 10;
 
-        ForwardMap<num_points, FormulationType::SingleLayer> FM(delta, circle, wave_lengths_per_patch, k);
+        ForwardMap<num_points, FormulationType::SingleLayer, 5, 5> FM(delta, circle, wave_lengths_per_patch, k);
         int N = FM.total_num_unknowns_;
         std::cout << "Total num unknowns " << N << std::endl;
 
-        FM.precomps_and_setup(k, nlevels);
+        BoxTree<5,5> boxes_2;
+        FM.precomps_and_setup(k, nlevels, boxes_2);
 
 
         std::vector<double> pointsx = FM.xs_;

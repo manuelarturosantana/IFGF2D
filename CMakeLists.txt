@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 
 
-set(COMMON_COMPILE_FLAGS "-O3")
+set(COMMON_COMPILE_FLAGS "-O3" "-Wall" "-Wextra")
 
 
 # set the project name and version
@@ -36,12 +36,12 @@ add_executable(IFGF_main
 
 
 target_link_libraries(IFGF_main PRIVATE ${COMP_BESSEL_PATH})
-target_compile_options(IFGF_main PRIVATE -Wall -Wextra)
+target_compile_options(IFGF_main PRIVATE ${COMMON_COMPILE_FLAGS})
 
 add_executable(IgnoreSingNSing
                 ${GEOMETRY_SOURCES} tests/IFGF/IgnoreSingNSing.cpp)
 target_link_libraries(IgnoreSingNSing PRIVATE ${COMP_BESSEL_PATH})
-target_compile_options(IgnoreSingNSing PRIVATE -Wall -Wextra)
+target_compile_options(IgnoreSingNSing PRIVATE ${COMMON_COMPILE_FLAGS})
 
 
 

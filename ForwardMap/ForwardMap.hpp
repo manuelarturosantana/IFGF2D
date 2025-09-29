@@ -2,7 +2,6 @@
 
 #include <vector>
 #include <memory>
-#include <optional> // Allows us to construct box tree after points are determined
 #include <unordered_set>
 #include <unordered_map>
 
@@ -72,7 +71,7 @@ class ForwardMap {
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
 
-        std::optional<BoxTree<Ps, Pang>> boxes_;
+        // BoxTree<Ps, Pang> boxes_;
 
         // sort_sing_point_[i] returns a set tracking incides of points j, that are singular
         // or near singular to the point i. Here the indices i, j are in morton sorted order.
@@ -137,16 +136,15 @@ class ForwardMap {
         /// @brief Compute IFGF Precomputations and BoxTree set up
         /// @param wavenumber The wave number to solve at
         /// @param nlevels The number of levels to use in IFGF
-        void precomps_and_setup(std::complex<double> wavenumber, int nlevels); 
+        void precomps_and_setup(std::complex<double> wavenumber, int nlevels, BoxTree<Ps,Pang>& boxes); 
         
         /// @brief Initializes the tracking of singular/near singular points
-        /// @param sorting The sorting vector from Boxtree
         /// @param inverse The inverse sorting vector from Boxtree
-        void init_sort_sing_point(const std::vector<long long>& sorting, const std::vector<long long>& inverse);
+        void init_sort_sing_point(const std::vector<long long>& inverse);
 
 
         /// @brief Compute the forward map Ax = b with IFGF 
-        Eigen::VectorXcd compute_Ax_acc(Eigen::VectorXcd& density, std::complex<double> wave_number);
+        Eigen::VectorXcd compute_Ax_acc(Eigen::VectorXcd& density, BoxTree<Ps,Pang>& boxes);
 
         // Other functions to implement:
         // compute_forward_map: Send x -> Ax by (Take in k as an argument)

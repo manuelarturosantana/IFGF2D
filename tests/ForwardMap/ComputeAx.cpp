@@ -11,15 +11,17 @@
 #include "../../utils/Rhs.hpp"
 #include "../../utils/Chebyshev1d.hpp"
 
+
+// Old Slow version
 // Script to Test the accuracy of the forward map on an eigenfunction test.
 //  Eigen::IOFormat customFormat(Eigen::FullPrecision, 0, ", ", "\n", "[", "]", "[", "]");
 // std::cout << vec.format(customFormat) << std::endl;
 int main() {
     double delta = 0.01;
-    double k     = M_PI * 200;
+    double k     = M_PI * 300;
     double wave_lengths_per_patch = 1;
     int m = 3;
-    int nlevels = 3;
+    int nlevels = 8;
 
     Circle circle;
     constexpr int num_points = 10;
@@ -29,19 +31,24 @@ int main() {
     std::cout << "Total number of points: " << FM.total_num_unknowns_ << std::endl;
 
     Eigen::VectorXcd RHS = circle_eigenfunction(FM.xs_, FM.ys_, m);
-    //DEBUG 
+ 
     std::cout << "Num unknowns " << FM.total_num_unknowns_ << std::endl;
     std::cout << "Num Patches " << FM.num_patches_ << std::endl;
     std::cout << "Size of a patch " << FM.patches_[0].point_t_vals_.size() << std::endl;
 
 
     auto start = std::chrono::high_resolution_clock::now();
-    FM.precomps_and_setup(k, nlevels);
+    BoxTree<5,5> boxes;
+    FM.precomps_and_setup(k, nlevels, boxes);
     auto end   = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken to run precomps and setup: " << elapsed.count() << std::endl;
 
-     
+    // std::cout << "Starting Boxtree solve" << std::endl;
+    // std::vector<std::complex<double>> v_density(RHS.data(), RHS.data() + RHS.size());
+    // boxes.Solve<FormulationType::SingleLayer>(true, v_density);
+
+    
     start = std::chrono::high_resolution_clock::now();
     Eigen::VectorXcd Ax_unacc = FM.compute_Ax_unacc(RHS,k);
     end   = std::chrono::high_resolution_clock::now();
@@ -51,7 +58,7 @@ int main() {
     RHS = circle_eigenfunction(FM.xs_, FM.ys_, m);
 
     start = std::chrono::high_resolution_clock::now();
-    Eigen::VectorXcd Ax_acc = FM.compute_Ax_acc(RHS,k);
+    Eigen::VectorXcd Ax_acc = FM.compute_Ax_acc(RHS,boxes);
     end   = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     std::cout << "Time taken to compute Ax Acc " << elapsed.count() << std::endl;

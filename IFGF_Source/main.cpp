@@ -17,7 +17,7 @@
 
 
 int num_f_evals = 0; // Check the number of function evaluations, which experiementally is about N log N :)
-const double wavenumber_ = M_PI;
+const double wavenumber_ = M_PI*300;
 const std::complex<double> imag_unit (0,1.0);
 
 // This is the Hankel function case
@@ -182,7 +182,7 @@ int main()
 
         constexpr FormulationType ftype = FormulationType::SingleLayer;
         const long long N = 10000;
-        const int nlevels = 4;
+        const int nlevels = 8;
 
         const bool compute_singular_interactions = true;
         const bool compute_error = true;

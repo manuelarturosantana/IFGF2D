@@ -112,7 +112,7 @@ class BoxTree
         {
 
             long long old_morton = -1;
-            long long npoints;
+            long long npoints = -1;
 
             for (long long i = 0; i < N_; i++) {
 
@@ -684,15 +684,15 @@ class BoxTree
 
         template <FormulationType Formulation>
         void LevelDEvaluations(std::vector<std::complex<double>> & density) {
-
+            
             long long old_cocentered_morton_box = -1;
             std::complex<double> locdensity;
 
             double locx, locnx;
             double locy, locny;
 
-            long long npoints;
-            long long points_begin;
+            long long npoints = -1;
+            long long points_begin = -1;
 
             for (size_t i = 0; i < levels_.back()->relconesegment2nonrelconesegment_.size(); i++) {
 
@@ -986,7 +986,28 @@ class BoxTree
 
     public:
 
-    // The initializer list x_(x) syntax means x is copied into x_(x), unless x_ is a reference.
+        // Default Constructor for storing it in a class
+        BoxTree() : nlevels_(0), wavenumber_(0.0), N_(0) {
+        // leave vectors empty, nothing heavy here
+        }
+
+        // Set up a new Boxtree
+        void Reinitialize(const std::vector<double>& x,
+                      const std::vector<double>& y,
+                      const std::vector<double>& nx,
+                      const std::vector<double>& ny,
+                      int nlevels,
+                      std::complex<double> wavenumber) 
+        {
+            x_ = x; y_ = y; nx_ = nx; ny_ = ny;
+            inverse_.assign(x.size(), {});   // reset to correct size
+            nlevels_ = nlevels;
+            wavenumber_ = wavenumber;
+            N_ = x.size();
+            Initialize();
+        }
+
+        // The initializer list x_(x) syntax means x is copied into x_(x), unless x_ is a reference.
         BoxTree(const std::vector<double>& x, const std::vector<double>& y, 
             const std::vector<double> & nx, const std::vector<double> ny, int nlevels, std::complex<double> wavenumber):
         x_(x), y_(y), nx_(nx), ny_(ny), inverse_(x_.size()), nlevels_(nlevels), wavenumber_(wavenumber), N_(x_.size())
@@ -1102,7 +1123,7 @@ class BoxTree
 
             // For each point near singular to a patch, check if each point in that patch is 
             // in the neighborhood of that point
-            for (long long patch_ind = 0; patch_ind < patches.size(); patch_ind++) {
+            for (size_t patch_ind = 0; patch_ind < patches.size(); patch_ind++) {
 
                 int patch_points_start = patch_ind * n_points_per_patch;
 

@@ -387,7 +387,7 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::complex<double> wavenumber, int nlevels) {
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::complex<double> wavenumber, int nlevels, BoxTree<Ps,Pang>& boxes) {
     
     auto start = std::chrono::high_resolution_clock::now();
     compute_precomputations(wavenumber);
@@ -395,16 +395,16 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::compl
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken to compute precomputations: " << elapsed.count() << std::endl;
 
-    boxes_.emplace(xs_, ys_, nxs_, nys_, nlevels, wavenumber);
+    boxes.Reinitialize(xs_, ys_, nxs_, nys_, nlevels, wavenumber);
 
     start = std::chrono::high_resolution_clock::now();
-    boxes_->CheckIfSingandNearSingInNeighborhood(xs_, ys_, patches_);
+    boxes.CheckIfSingandNearSingInNeighborhood(xs_, ys_, patches_);
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     std::cout << "Time taken to check sing and near sing in neighborhood: " << elapsed.count() << std::endl;
 
     start = std::chrono::high_resolution_clock::now();
-    init_sort_sing_point(boxes_->getSorting(), boxes_->getInverse());
+    init_sort_sing_point(boxes.getInverse());
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     std::cout << "Time taken to compute sort sing point: " << elapsed.count() << std::endl;
@@ -412,10 +412,9 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::compl
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_sort_sing_point(const std::vector<long long>& sorting, 
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_sort_sing_point( 
 const std::vector<long long>& inverse) {
     sort_sing_point_.resize(total_num_unknowns_);
-
 
 
     for (int patch_idx = 0; patch_idx < num_patches_; patch_idx++) {
@@ -456,7 +455,7 @@ const std::vector<long long>& inverse) {
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
-    (Eigen::VectorXcd& density, std::complex<double> wavenumber) {
+    (Eigen::VectorXcd& density, BoxTree<Ps,Pang>& boxes) {
     
     auto start = std::chrono::high_resolution_clock::now();
     Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
@@ -479,7 +478,8 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
     std::cout << "time for deep copy of Eigen::vector to std;:vector " << elapsed.count() << std::endl;
     
     start = std::chrono::high_resolution_clock::now();
-    boxes_->template Solve<Formulation>(true, v_density, sort_sing_point_);
+    boxes.template Solve<Formulation>(true, v_density, sort_sing_point_);
+    // boxes_.template Solve<Formulation>(true, v_density, sort_sing_point_);
     end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     std::cout << "time for boxtree solve " << elapsed.count() << std::endl;
