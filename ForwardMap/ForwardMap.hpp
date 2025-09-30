@@ -149,8 +149,10 @@ class ForwardMap {
 
         /// @brief Compute the forward map Ax = b with IFGF 
         Eigen::VectorXcd compute_Ax_acc(Eigen::VectorXcd& density, BoxTree<Ps,Pang>& boxes);
-
-        Eigen::VectorXcd solve_unacc(const Eigen::VectorXcd& rhs, std::complex<double> wavenumber);
+        void compute_Ax_acc(const Eigen::VectorXcd& density, Eigen::VectorXcd& out, BoxTree<Ps,Pang>& boxes);
+ 
+        Eigen::VectorXcd solve(const Eigen::VectorXcd& rhs, std::complex<double> wavenumber, 
+            int nlevels=5,bool accelerated=true); 
 
         /// @brief Evaluate the layer potential via direct quadrature
         /// @param x_prop, y_prop x and y values to evaluate the layer potential at

@@ -14,10 +14,10 @@
 // File to test solution of the integral equation using GMRES
 int main() {
     double delta = 0.1;
-    double k     = M_PI * 10;
+    double k     = M_PI * 100;
     double wave_lengths_per_patch = 1;
     double x_0 = 0; double y_0 = 0; // Center of the point sources
-
+    int nlevels = 6;
     std::vector<double> x_test = {1.2}; std::vector<double> y_test = {1.5};
 
     // int nlevels = 8;
@@ -31,7 +31,8 @@ int main() {
 
     Eigen::VectorXcd RHS = point_source(FM.xs_, FM.ys_, x_0, y_0, k);
 
-    Eigen::VectorXcd dens = FM.solve_unacc(RHS, k);
+    // Eigen::VectorXcd dens = FM.solve(RHS, k, nlevels, false);
+    Eigen::VectorXcd dens = FM.solve(RHS, k, nlevels, true);
 
     Eigen::VectorXcd sol_app = FM.propagate_unacc(x_test, y_test, dens, k);
 

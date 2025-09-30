@@ -470,32 +470,32 @@ template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
     (Eigen::VectorXcd& density, BoxTree<Ps,Pang>& boxes) {
     
-    auto start = std::chrono::high_resolution_clock::now();
+    // auto start = std::chrono::high_resolution_clock::now();
     Eigen::VectorXcd sns = compute_sing_near_sing_interactions(density);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << "time for compute sing near sing interactions " << elapsed.count() << std::endl;
+    // auto end = std::chrono::high_resolution_clock::now();
+    // std::chrono::duration<double> elapsed = end - start;
+    // std::cout << "time for compute sing near sing interactions " << elapsed.count() << std::endl;
     
-    start = std::chrono::high_resolution_clock::now();
+    // start = std::chrono::high_resolution_clock::now();
     compute_intensities(density);
-    end = std::chrono::high_resolution_clock::now();
-    elapsed = end - start;
-    std::cout << "time for compute intensities " << elapsed.count() << std::endl;
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = end - start;
+    // std::cout << "time for compute intensities " << elapsed.count() << std::endl;
 
     // TODO: Speedup This makes a deep copy since vector always owns its data.
     // Could speed up by rewriting boxtree to take Eigen::VectorXcd
-    start = std::chrono::high_resolution_clock::now();
+    // start = std::chrono::high_resolution_clock::now();
     std::vector<std::complex<double>> v_density(density.data(), density.data() + density.size());
-    end = std::chrono::high_resolution_clock::now();
-    elapsed = end - start;
-    std::cout << "time for deep copy of Eigen::vector to std;:vector " << elapsed.count() << std::endl;
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = end - start;
+    // std::cout << "time for deep copy of Eigen::vector to std;:vector " << elapsed.count() << std::endl;
     
-    start = std::chrono::high_resolution_clock::now();
+    // start = std::chrono::high_resolution_clock::now();
     boxes.template Solve<Formulation>(true, v_density, sort_sing_point_);
     // boxes_.template Solve<Formulation>(true, v_density, sort_sing_point_);
-    end = std::chrono::high_resolution_clock::now();
-    elapsed = end - start;
-    std::cout << "time for boxtree solve " << elapsed.count() << std::endl;
+    // end = std::chrono::high_resolution_clock::now();
+    // elapsed = end - start;
+    // std::cout << "time for boxtree solve " << elapsed.count() << std::endl;
 
     Eigen::Map<Eigen::VectorXcd> ns(v_density.data(), v_density.size());
 
@@ -505,35 +505,111 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
    
  }
 
+ template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
+    (const Eigen::VectorXcd& density, Eigen::VectorXcd& out, BoxTree<Ps,Pang>& boxes) {
+        // Copy density since we have to use const for GMRES
+        Eigen::VectorXcd density_cpy = density;
+
+        out = compute_Ax_acc(density_cpy, boxes);
+    }
+
  //////////////////////////////// GMRES Solution Functions///////////////////////////////
  template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
- Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve_unacc
- (const Eigen::VectorXcd& rhs, std::complex<double> wavenumber) {
-    
+Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve(
+    const Eigen::VectorXcd& rhs, std::complex<double> wavenumber,
+    int nlevels, bool accelerated) 
+{
     long long N = rhs.size();
+    BoxTree<Ps, Pang> boxes;
 
-    compute_precomputations(wavenumber);
+    if (accelerated) {    
+        precomps_and_setup(wavenumber, nlevels, boxes);
+    } else {
+        compute_precomputations(wavenumber);
+    }
 
-    auto A = [this, wavenumber](const Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
-    void {compute_Ax_unacc(x, solution, wavenumber);};
+    // pick the appropriate operator
+    auto A = [this, wavenumber, accelerated, &boxes](const Eigen::VectorXcd& x,
+                                             Eigen::VectorXcd& solution) -> void {
+        if (accelerated) {
+            compute_Ax_acc(x, solution, boxes);
+        } else {
+            compute_Ax_unacc(x, solution, wavenumber);
+        }
+    };
 
-    LinearOperator B(N,N,A);
+    LinearOperator B(N, N, A);
 
     Eigen::opGMRES<LinearOperator> func(B);
-
     func.setMaxIterations(GMRES_MAX_ITER_);
     func.set_restart(GMRES_MAX_ITER_);
     func.setTolerance(GMRES_TOLERANCE_);
 
     Eigen::VectorXcd x = func.solve(rhs);
+
     std::cout << func.error() << std::endl;
     if (func.info() == Eigen::Success) {
         std::cout << "we did it " << std::endl;
     }
 
     return x;
+}
+//  template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+//  Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve_unacc
+//  (const Eigen::VectorXcd& rhs, std::complex<double> wavenumber) {
     
- }
+//     long long N = rhs.size();
+
+//     compute_precomputations(wavenumber);
+
+//     auto A = [this, wavenumber](const Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
+//     void {compute_Ax_unacc(x, solution, wavenumber);};
+
+//     LinearOperator B(N,N,A);
+
+//     Eigen::opGMRES<LinearOperator> func(B);
+
+//     func.setMaxIterations(GMRES_MAX_ITER_);
+//     func.set_restart(GMRES_MAX_ITER_);
+//     func.setTolerance(GMRES_TOLERANCE_);
+
+//     Eigen::VectorXcd x = func.solve(rhs);
+//     std::cout << func.error() << std::endl;
+//     if (func.info() == Eigen::Success) {
+//         std::cout << "we did it " << std::endl;
+//     }
+
+//     return x;
+//  }
+
+//  // TODO: This is unideal to have this and the above function different
+// template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+// Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve_acc
+// (const Eigen::VectorXcd& rhs, std::complex<double> wavenumber, int nlevels) {
+
+//     BoxTree<Ps, Pang> boxes;
+//     precomps_and_setup(wavenumber, nlevels, boxes);
+
+//     auto A = [this, wavenumber](const Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
+//     void {compute_Ax_unacc(x, solution, wavenumber);};
+
+//      LinearOperator B(N,N,A);
+
+//     Eigen::opGMRES<LinearOperator> func(B);
+
+//     func.setMaxIterations(GMRES_MAX_ITER_);
+//     func.set_restart(GMRES_MAX_ITER_);
+//     func.setTolerance(GMRES_TOLERANCE_);
+
+//     Eigen::VectorXcd x = func.solve(rhs);
+//     std::cout << func.error() << std::endl;
+//     if (func.info() == Eigen::Success) {
+//         std::cout << "we did it " << std::endl;
+//     }
+
+//     return x;
+// }
 //////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////// Propagation functions
@@ -563,3 +639,4 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
 
     return out;
  }
+

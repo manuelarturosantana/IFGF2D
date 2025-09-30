@@ -1033,18 +1033,18 @@ class BoxTree
             // Put the density in the correct order of the points.
             SortDensity(density);
 
-            auto start = std::chrono::high_resolution_clock::now();
+            // auto start = std::chrono::high_resolution_clock::now();
             if (with_singular_interactions) 
                 SingularInteractions<Formulation>(density, sort_sing_point_opt);
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double> elapsed = end - start;
-            std::cout << "Boxtree: Time for Singular Interactions " << elapsed.count() << std::endl;
+            // auto end = std::chrono::high_resolution_clock::now();
+            // std::chrono::duration<double> elapsed = end - start;
+            // std::cout << "Boxtree: Time for Singular Interactions " << elapsed.count() << std::endl;
 
-            start = std::chrono::high_resolution_clock::now();
+            // start = std::chrono::high_resolution_clock::now();
             LevelDEvaluations<Formulation>(density);
-            end = std::chrono::high_resolution_clock::now();
-            elapsed = end - start;
-            std::cout << "time for level D evaluations " << elapsed.count() << std::endl;
+            // end = std::chrono::high_resolution_clock::now();
+            // elapsed = end - start;
+            // std::cout << "time for level D evaluations " << elapsed.count() << std::endl;
 
             for (int level = D; level >= 2; level--) {
 
