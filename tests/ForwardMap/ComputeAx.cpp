@@ -12,7 +12,6 @@
 #include "../../utils/Chebyshev1d.hpp"
 
 
-// Old Slow version
 // Script to Test the accuracy of the forward map on an eigenfunction test.
 //  Eigen::IOFormat customFormat(Eigen::FullPrecision, 0, ", ", "\n", "[", "]", "[", "]");
 // std::cout << vec.format(customFormat) << std::endl;
@@ -43,10 +42,6 @@ int main() {
     auto end   = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> elapsed = end - start;
     std::cout << "Time taken to run precomps and setup: " << elapsed.count() << std::endl;
-
-    // std::cout << "Starting Boxtree solve" << std::endl;
-    // std::vector<std::complex<double>> v_density(RHS.data(), RHS.data() + RHS.size());
-    // boxes.Solve<FormulationType::SingleLayer>(true, v_density);
 
     
     start = std::chrono::high_resolution_clock::now();

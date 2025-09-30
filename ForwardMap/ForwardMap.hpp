@@ -55,7 +55,7 @@ class ForwardMap {
         
         int near_singular_patch_est_; // Assume all near singular points are in patches only 1 away from this
         double p_; // Parameter in rectangular polar change of variables.
-        double eta_ = 0.0;
+        double eta_ = 0.0; // Coupling parameter
 
 
         const int num_ns = 40; // Number of points to use for the near singular integration. Not a parameter to set for now
@@ -70,6 +70,9 @@ class ForwardMap {
 
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
+
+        int GMRES_MAX_ITER_ = 40;
+        double GMRES_TOLERANCE_ = 1e-6;
 
         // BoxTree<Ps, Pang> boxes_;
 
@@ -132,6 +135,7 @@ class ForwardMap {
 
         /// @brief Compute the forward map Ax = b without IFGF
         Eigen::VectorXcd compute_Ax_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number);
+        void compute_Ax_unacc(Eigen::VectorXcd& density, Eigen::VectorXcd& out, std::complex<double> wave_number);
         
         /// @brief Compute IFGF Precomputations and BoxTree set up
         /// @param wavenumber The wave number to solve at
@@ -146,10 +150,15 @@ class ForwardMap {
         /// @brief Compute the forward map Ax = b with IFGF 
         Eigen::VectorXcd compute_Ax_acc(Eigen::VectorXcd& density, BoxTree<Ps,Pang>& boxes);
 
-        // Other functions to implement:
-        // compute_forward_map: Send x -> Ax by (Take in k as an argument)
-            // Computing the Singular / Near singular interactions
-            // Eventually going to include IFGF
+        Eigen::VectorXcd solve_unacc(const Eigen::VectorXcd& rhs, std::complex<double> wavenumber);
+
+        /// @brief Evaluate the layer potential via direct quadrature
+        /// @param x_prop, y_prop x and y values to evaluate the layer potential at
+        /// @param density The density to propigate. IMPORTANTLY passed as a copy so that
+        ///                the weights can be multiplied before doing the propagation
+        /// @param wavenumber The same wavenumber used to solve the equation
+        Eigen::VectorXcd propagate_unacc(const std::vector<double> x_prop, 
+            const std::vector<double> y_prop, Eigen::VectorXcd density, std::complex<double> wavenumber);
 
 };
 

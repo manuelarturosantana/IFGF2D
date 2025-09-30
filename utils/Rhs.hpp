@@ -8,6 +8,7 @@
 #include<Eigen/Dense>
 
 #include "../IFGF_Source/PolarCoordinates.h"
+#include "../complex_bessel-master/include/complex_bessel.h"
 
 /// @brief Creates the eigenfunction for the SLP evaluated on the circle. exp^(i m theta)
 ///        The eigenvalue is (i pi / 2)J_n(k)H_n^(1)(k);
@@ -18,8 +19,7 @@
 /// @return A vector with the eigenvalues.
 Eigen::VectorXcd circle_eigenfunction(const std::vector<double>& xs, 
     const std::vector<double> & ys, int m) {
-     
-
+    
         std::complex<double> c_unit(0.0,1.0);
         Eigen::VectorXcd out(xs.size());
 
@@ -32,5 +32,33 @@ Eigen::VectorXcd circle_eigenfunction(const std::vector<double>& xs,
         }
 
         return out;
+
+}
+
+/// @brief Compute the RHS given by a point source (2D Helmholtz green function)
+/// @param xs x value on the boundary to evalute the RHS at
+/// @param ys y value on the boundary to evalute the RHS at
+/// @param x_0 x value of location of the point source
+/// @param y_0 y value of the location of the point source
+/// @param wavenumber Wave number of the fundamental solution
+/// @return A vector containig the rahd hand side
+Eigen::VectorXcd point_source(const std::vector<double>& xs, 
+    const std::vector<double> & ys, double x_0, double y_0, std::complex<double> wavenumber) {
+
+        std::complex<double> c_unit(0.0,1.0);
+        Eigen::VectorXcd out(xs.size());
+
+        for (size_t ii = 0; ii < xs.size(); ii++) {
+            double x = xs[ii]; double y = ys[ii];
+            
+            double distance = std::sqrt(
+                std::pow(x - x_0, 2) + std::pow(y - y_0,2)
+            );
+
+            out[ii] = (c_unit / 4.0) * sp_bessel::hankelH1(0, wavenumber * distance);
+        }
+
+        return out;
+
 
     }

@@ -2,9 +2,12 @@
 #include <chrono>
 #include <iostream>
 #include <array>
-#include<iomanip>
+#include <iomanip>
+
+#include "opGMRES.hpp"
 
 #include "ForwardMap.hpp"
+#include "LinearOperator.hpp"
 #include "../utils/Quadrature.hpp"
 #include "../utils/BrentsMethod.hpp"
 
@@ -387,6 +390,12 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
+(Eigen::VectorXcd& density, Eigen::VectorXcd& out, std::complex<double> wave_number) {
+    out = compute_Ax_unacc(density, wave_number);
+}
+
+template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::precomps_and_setup(std::complex<double> wavenumber, int nlevels, BoxTree<Ps,Pang>& boxes) {
     
     auto start = std::chrono::high_resolution_clock::now();
@@ -492,3 +501,57 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
    
  }
 
+ //////////////////////////////// GMRES Solution Functions///////////////////////////////
+ template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve_unacc
+ (const Eigen::VectorXcd& rhs, std::complex<double> wavenumber) {
+    
+    long long N = rhs.size();
+
+    compute_precomputations(wavenumber);
+
+    auto A = [this, wavenumber](Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
+    void {compute_Ax_unacc(x, solution, wavenumber);};
+
+    LinearOperator B(N,N,A);
+
+    Eigen::opGMRES<LinearOperator> func(B);
+
+    func.setMaxIterations(GMRES_MAX_ITER_);
+    func.set_restart(GMRES_MAX_ITER_);
+    func.setTolerance(GMRES_TOLERANCE_);
+
+    Eigen::VectorXcd x = func.solve(rhs);
+
+    return x;
+    
+ }
+//////////////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////// Propagation functions
+ template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
+ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::propagate_unacc
+ (const std::vector<double> x_prop, const std::vector<double> y_prop, Eigen::VectorXcd density,
+    std::complex<double> wavenumber) {
+
+    compute_intensities(density);
+
+    Eigen::VectorXcd out(x_prop.size());
+
+    Eigen::ArrayXcd green_func_evals(xs_.size());
+
+    for (size_t i = 0; i < x_prop.size(); i++) {
+
+        out[i] = 0.0;
+
+        for (size_t j = 0; j < xs_.size(); j++) {
+
+            out[i] += density[j] * GF<Formulation>(x_prop[i], y_prop[i], xs_[j], ys_[j],
+            nxs_[j], nys_[j], eta_, wavenumber);
+
+        }
+
+    }
+
+    return out;
+ }
