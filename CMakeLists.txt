@@ -65,10 +65,10 @@ include_directories(/opt/Eigen/)
 # target_compile_options(SinglePointSingCoeffs PRIVATE ${COMMON_COMPILE_FLAGS})
 # target_link_libraries(SinglePointSingCoeffs PRIVATE ${COMP_BESSEL_PATH})
 
-# add_executable(ComputeAx
-#                 ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
-# target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
-# target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
+add_executable(ComputeAx
+                ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
+target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
+target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
 
 add_executable(SolveAndPropagate
                 ${GEOMETRY_SOURCES} ${FORWARD_MAP_SOURCES} tests/ForwardMap/SolveAndPropagate.cpp)

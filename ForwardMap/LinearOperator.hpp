@@ -46,15 +46,15 @@ public:
 protected:
   int rows_;
   int cols_;
-  std::function<void (Eigen::VectorXcd&, Eigen::VectorXcd&)> mapping_;
+  std::function<void (const Eigen::VectorXcd&, Eigen::VectorXcd&)> mapping_;
 
 //--- End Eigen GMRES Compatability --------------------------------------------
 
 public:
-  LinearOperator(int rows, int cols, const std::function<void (Eigen::VectorXcd&, Eigen::VectorXcd&)>& mapping);
+  LinearOperator(int rows, int cols, const std::function<void (const Eigen::VectorXcd&, Eigen::VectorXcd&)>& mapping);
   
   ~LinearOperator();
 
-  Eigen::VectorXcd operator*(Eigen::VectorXcd &x) const;
+  Eigen::VectorXcd operator*(const Eigen::VectorXcd &x) const;
 
 };

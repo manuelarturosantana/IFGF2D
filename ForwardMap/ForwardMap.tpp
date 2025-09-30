@@ -391,8 +391,12 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
 void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_unacc
-(Eigen::VectorXcd& density, Eigen::VectorXcd& out, std::complex<double> wave_number) {
-    out = compute_Ax_unacc(density, wave_number);
+(const Eigen::VectorXcd& density, Eigen::VectorXcd& out, std::complex<double> wave_number) {
+    
+    // Make a copy here b/c we must modify the input with the integration weights
+    Eigen::VectorXcd density_cpy = density;
+
+    out = compute_Ax_unacc(density_cpy, wave_number);
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
@@ -510,7 +514,7 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
 
     compute_precomputations(wavenumber);
 
-    auto A = [this, wavenumber](Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
+    auto A = [this, wavenumber](const Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
     void {compute_Ax_unacc(x, solution, wavenumber);};
 
     LinearOperator B(N,N,A);
@@ -522,6 +526,10 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_Ax_acc
     func.setTolerance(GMRES_TOLERANCE_);
 
     Eigen::VectorXcd x = func.solve(rhs);
+    std::cout << func.error() << std::endl;
+    if (func.info() == Eigen::Success) {
+        std::cout << "we did it " << std::endl;
+    }
 
     return x;
     

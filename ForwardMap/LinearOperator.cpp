@@ -1,6 +1,6 @@
 #include "LinearOperator.hpp"
 
-LinearOperator::LinearOperator(int rows, int cols, const std::function<void (Eigen::VectorXcd&, Eigen::VectorXcd&)>& mapping)
+LinearOperator::LinearOperator(int rows, int cols, const std::function<void (const Eigen::VectorXcd&, Eigen::VectorXcd&)>& mapping)
 : rows_(rows), 
   cols_(cols),
   mapping_(mapping)
@@ -11,7 +11,7 @@ LinearOperator::~LinearOperator()
 {
 }
 
-Eigen::VectorXcd LinearOperator::operator*(Eigen::VectorXcd &x) const
+Eigen::VectorXcd LinearOperator::operator*(const Eigen::VectorXcd &x) const
 {
 
   Eigen::VectorXcd solution;

@@ -71,7 +71,7 @@ class ForwardMap {
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
 
-        int GMRES_MAX_ITER_ = 40;
+        int GMRES_MAX_ITER_ = 200;
         double GMRES_TOLERANCE_ = 1e-6;
 
         // BoxTree<Ps, Pang> boxes_;
@@ -135,7 +135,7 @@ class ForwardMap {
 
         /// @brief Compute the forward map Ax = b without IFGF
         Eigen::VectorXcd compute_Ax_unacc(Eigen::VectorXcd& density, std::complex<double> wave_number);
-        void compute_Ax_unacc(Eigen::VectorXcd& density, Eigen::VectorXcd& out, std::complex<double> wave_number);
+        void compute_Ax_unacc(const Eigen::VectorXcd& density, Eigen::VectorXcd& out, std::complex<double> wave_number);
         
         /// @brief Compute IFGF Precomputations and BoxTree set up
         /// @param wavenumber The wave number to solve at
