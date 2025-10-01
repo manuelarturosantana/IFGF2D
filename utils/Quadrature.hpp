@@ -107,7 +107,7 @@ template <typename T> int sgn(T val) {
 }
 
 
-/// @brief The xi change of variables used to cancel the singularities.
+/// @brief The xi change of variables used to cancel kernel singularities.
 /// TODOSPEEDUP: If this doesn't get vectorized it may be too slow. Eigen could help vectorize this.
 ///              Also could combine the computation of the value and the change of variables to not recompute M_PI*std::abs(t) etc.
 ///              Althought I suspect that this latter speedup will be nearly unoticable.
@@ -145,6 +145,33 @@ double inline dxi_cov_left(double t,  double p) {
     double temp = (t + 1.0) / 2.0;
     return 1.0 * wp_cov_base(M_PI * std::abs(temp),p) * sgn(temp);
 }
+
+////////////////////////// Change of variable to cancel geometry singularities/////////////
+
+double inline both_edge_cov(double t, double p) {
+    return -1.0 + M_1_PI * w_cov_base(M_PI * (t + 1.0), p);
+}
+
+double inline minus1_edge_cov(double t, double p) {
+    return -1.0 + 2.0 * M_1_PI * w_cov_base((M_PI / 2.0) * (t + 1.0), p);
+}
+
+double inline plus1_edge_cov(double t, double p) {
+    return -3.0 + 2.0 * M_1_PI * w_cov_base(M_PI + (M_PI / 2.0) * (t + 1), p);
+}
+
+double inline der_both_edge_cov(double t, double p) {
+    return wp_cov_base(M_PI * (t + 1.0), p);
+}
+
+double inline der_minus1_edge_cov(double t, double p) {
+    return wp_cov_base(M_PI * (t + 1.0), p);
+}
+
+double inline der_plus1_edge_cov(double t, double p) {
+    return wp_cov_base(M_PI + (M_PI / 2.0) * (t + 1), p);
+}
+
 
 
 
