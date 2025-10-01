@@ -7,8 +7,15 @@
 #include "../utils/Quadrature.hpp"
 
 // Waring: It is assumed that the parameterization is positively oriented
-class ClosedCurve {
+class Curve {
     public:
+
+        // The user will have to take care to to change is_closed, tlim1, or tlim2 after a curve
+        // has been initialized. However making them run time constants allows for the closed curves
+        // to automatically be used as open curves
+        bool is_closed;
+        double tlim1, tlim2;
+
         // Returns x and y coordinates of points in space.
         void gt_vec(const std::vector<double>& ts, std::vector<double>& xs, std::vector<double>& ys) const {
             xt_vec(ts, xs); yt_vec(ts, ys);
@@ -50,7 +57,7 @@ class ClosedCurve {
         /// @return A vector where v[i],v[i+1] gives the t limits for patch i, i = 0,...,v.size() - 1;
         std::vector<double> compute_patch_lims(double wavelengths_per_patch, double wavenumber);
 
-        virtual ~ClosedCurve() = default;
+        virtual ~Curve() = default;
 
         int num_integration_points; // Number of integration points for computing patch size
         std::vector<double> integration_nodes;
@@ -70,7 +77,8 @@ class ClosedCurve {
             std::vector<double>().swap(integration_weights);
         }
    
-        ClosedCurve(int num_integration_points = 200) : num_integration_points(num_integration_points) {
+        Curve(bool is_closed, double tlim1, double tlim2, int num_integration_points = 200) : 
+        is_closed(is_closed), tlim1(tlim1), tlim2(tlim2), num_integration_points(num_integration_points) {
             set_integration_points();
         }
         
@@ -84,14 +92,19 @@ class ClosedCurve {
         
 };
 
-class Circle : public ClosedCurve { 
+class Circle : public Curve { 
     public:
         double centerx;
         double centery;
         double radius;
 
-        Circle(double centerx=0.0, double centery=0.0, double radius=1.0) :  ClosedCurve(),
-         centerx(centerx), centery(centery), radius(radius) { }
+        Circle(bool is_closed=true, double tlim1 = 0, double tlim2 = 2.0 *M_PI, 
+            double centerx=0.0, double centery=0.0, double radius=1.0) :  
+            Curve(is_closed, tlim1, tlim2),
+         centerx(centerx), centery(centery), radius(radius) { 
+            tlim1 = 0;
+            tlim2 = 2* M_PI;
+         }
 
         double xt(double t) const override;
         double yt(double t) const override;
@@ -101,7 +114,7 @@ class Circle : public ClosedCurve {
 };
 
 
-class Kite : public ClosedCurve { 
+class Kite : public Curve { 
     public:
         // Kite is defined as (x(t), y(t)) with
         // x(t) = Acos(t) + Bcos(2t) + C
@@ -109,8 +122,11 @@ class Kite : public ClosedCurve {
         double A, B, C, D;
 
         // Default parameters correspond to the Colton and Kress kite
-        Kite(double A=1.0, double B=0.65, double C=-0.65, double D=1.5) : ClosedCurve(),
-         A(A), B(B), C(C), D(D) {};
+        Kite(bool is_closed=true, double tlim1 = 0, double tlim2 = 2.0 *M_PI, 
+             double A=1.0, double B=0.65, double C=-0.65, double D=1.5) : 
+             Curve(is_closed, tlim1, tlim2),
+            A(A), B(B), C(C), D(D) {
+         };
 
         double xt(double t) const override;
         double yt(double t) const override;
@@ -118,4 +134,18 @@ class Kite : public ClosedCurve {
         double ypt(double t) const override;
 };
 
+class Line : public Curve {
+    public :
+        // Line connection the points (x1,y1), (x2,y2)
+        double x1, y1, x2, y2;
+
+        Line(double x1, double y1, double x2, double y2) : Curve(false, -1.0, 1.0),
+            x1(x1), y1(y1), x2(x2), y2(y2) {};
+
+            double xt(double t) const override;
+            double yt(double t) const override;
+            double xpt(double t) const override;
+            double ypt(double t) const override;
+
+};
 

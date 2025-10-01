@@ -42,12 +42,11 @@ class Patch {
         // Storing the curve as a reference means we must guarantee that the curve passed 
         // in outlives all the patch objects that use it. If this is an issue
         // Consider using std::shared_ptr instead.
-        ClosedCurve& curve_;
+        Curve& curve_;
 
         double delta;  // RP near singularity parameter
         
-        bool ist1open, ist2open;  // Tracks if patch has open endpts
-        bool ist1corner, ist2corner; // Tracks it patch has corner endpoints
+        bool ist1singular, ist2singular;  // Tracks if patch has singularities at the endpoints
 
         // Matrix containing the points varying with column index, and tchebyshev polynomials
         // varying with row index. This convention makes it easier to grab a set of coefficients

@@ -21,7 +21,7 @@ set(COMP_BESSEL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/complex_bessel-master/build/li
 
 set(GEOMETRY_SOURCE_DIR Geometry)
 set(GEOMETRY_SOURCES 
-    ${GEOMETRY_SOURCE_DIR}/ClosedCurve.cpp)
+    ${GEOMETRY_SOURCE_DIR}/Curve.cpp)
 
 set(FORWARD_MAP_SOURCE_DIR ForwardMap)
 set(FORWARD_MAP_SOURCES
@@ -47,10 +47,10 @@ include_directories(/opt/Eigen/)
 # target_link_libraries(IgnoreSingNSing PRIVATE ${COMP_BESSEL_PATH})
 # target_compile_options(IgnoreSingNSing PRIVATE ${COMMON_COMPILE_FLAGS})
 
-add_executable(Scaling
-                ${GEOMETRY_SOURCES} tests/IFGF/Scaling.cpp)
-target_compile_options(Scaling PRIVATE ${COMMON_COMPILE_FLAGS})
-target_link_libraries(Scaling PRIVATE ${COMP_BESSEL_PATH})
+# add_executable(Scaling
+#                 ${GEOMETRY_SOURCES} tests/IFGF/Scaling.cpp)
+# target_compile_options(Scaling PRIVATE ${COMMON_COMPILE_FLAGS})
+# target_link_libraries(Scaling PRIVATE ${COMP_BESSEL_PATH})
 
 
 
@@ -83,9 +83,9 @@ target_link_libraries(Scaling PRIVATE ${COMP_BESSEL_PATH})
 
 
 ################################# GEOMETRY TESTS #########################################
-# add_executable(ClosedCurvePatchSplitting
-#                 ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
-# target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
+add_executable(ClosedCurvePatchSplitting
+                ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
+target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
 
 # add_executable(BoundingBoxTests
 #                 ${GEOMETRY_SOURCES} tests/Geometry/BoundingBoxTests.cpp)

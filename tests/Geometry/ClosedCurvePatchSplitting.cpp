@@ -1,4 +1,4 @@
-#include "../../Geometry/ClosedCurve.hpp"
+#include "../../Geometry/Curve.hpp"
 #include <iostream>
 
 int main() {
@@ -8,7 +8,8 @@ int main() {
 
     double wavenumber = 8;
     double wavelengths_per_patch = 1.0;
-    Kite curve;
+    Line curve(1.0,1.0,10.0,12.0);
+    // Kite curve;
     
     // Compute patch limits
     std::vector<double> patch_limits = curve.compute_patch_lims(wavelengths_per_patch, wavenumber);
