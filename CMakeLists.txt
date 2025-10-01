@@ -47,6 +47,11 @@ include_directories(/opt/Eigen/)
 # target_link_libraries(IgnoreSingNSing PRIVATE ${COMP_BESSEL_PATH})
 # target_compile_options(IgnoreSingNSing PRIVATE ${COMMON_COMPILE_FLAGS})
 
+add_executable(Scaling
+                ${GEOMETRY_SOURCES} tests/IFGF/Scaling.cpp)
+target_compile_options(Scaling PRIVATE ${COMMON_COMPILE_FLAGS})
+target_link_libraries(Scaling PRIVATE ${COMP_BESSEL_PATH})
+
 
 
 
@@ -65,15 +70,15 @@ include_directories(/opt/Eigen/)
 # target_compile_options(SinglePointSingCoeffs PRIVATE ${COMMON_COMPILE_FLAGS})
 # target_link_libraries(SinglePointSingCoeffs PRIVATE ${COMP_BESSEL_PATH})
 
-add_executable(ComputeAx
-                ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
-target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
-target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
+# add_executable(ComputeAx
+#                 ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
+# target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
+# target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
 
-add_executable(SolveAndPropagate
-                ${GEOMETRY_SOURCES} ${FORWARD_MAP_SOURCES} tests/ForwardMap/SolveAndPropagate.cpp)
-target_compile_options(SolveAndPropagate PRIVATE ${COMMON_COMPILE_FLAGS})
-target_link_libraries(SolveAndPropagate PRIVATE ${COMP_BESSEL_PATH})
+# add_executable(SolveAndPropagate
+#                 ${GEOMETRY_SOURCES} ${FORWARD_MAP_SOURCES} tests/ForwardMap/SolveAndPropagate.cpp)
+# target_compile_options(SolveAndPropagate PRIVATE ${COMMON_COMPILE_FLAGS})
+# target_link_libraries(SolveAndPropagate PRIVATE ${COMP_BESSEL_PATH})
 
 
 

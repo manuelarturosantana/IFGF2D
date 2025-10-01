@@ -126,7 +126,7 @@ class Level {
             // the s distance divided by the size of each s interval.
             const long long nactualcones = std::ceil(scaling_r2s_*(1.0/minsize - 1.0/maxsize)/tmpsizeins);
 
-            std::cout << "Level " << level_ << " num cones " << nactualcones << std::endl;
+            // std::cout << "Level " << level_ << " num cones " << nactualcones << std::endl;
             
             radial_intervals_cone_.resize(nactualcones+1);
             radial_intervals_cone_[0] = minsize;

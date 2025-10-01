@@ -28,13 +28,7 @@ ForwardMap<Np, Formulation, Ps, Pang, Nroot>::ForwardMap(double delta, ClosedCur
     // Compute all points used in the discretization and bounding boxes.
     init_points_and_patches(curve, wavelengths_per_patch, patch_split_wavenumber);
 
-    auto start = std::chrono::high_resolution_clock::now();
     determine_patch_near_singular_points();
-    auto end = std::chrono::high_resolution_clock::now();
-
-    std::chrono::duration<double> elapsed = end - start;
-    std::cout << "Time taken to determine near singular points: " << elapsed.count() << std::endl;
-   
 
 }
 
