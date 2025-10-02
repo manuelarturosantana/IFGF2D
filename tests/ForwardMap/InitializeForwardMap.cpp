@@ -1,9 +1,10 @@
 #include <iostream>
 #include <functional>
 #include <array>
+#include <memory>
 
 #include "../../ForwardMap/ForwardMap.hpp"
-#include "../../Geometry/ClosedCurve.hpp"
+#include "../../Geometry/Curve.hpp"
 #include "../../utils/BrentsMethod.hpp"
 
 // Appears to be working :).
@@ -24,14 +25,17 @@ int main() {
     // std::array<double, 2> out = brent_find_minima(f, -1.0, 3.0);
     // std::cout << "Min = " << out[0] << " f(min) = " << out[1] << std::endl;
 
-    
-    Kite kite;
+    std::vector<std::unique_ptr<Curve>> curves;
+    curves.emplace_back(std::make_unique<Kite>());
+    std::vector<std::vector<Junction>> curve_touch_tracker;
+
     constexpr int num_points = 10;
-    ForwardMap<num_points, FormulationType::SingleLayer, num_points> FM(delta, kite, wave_lengths_per_patch, k);
+    ForwardMap<num_points, FormulationType::SingleLayer> FM(delta, std::move(curves), curve_touch_tracker,
+         wave_lengths_per_patch, k);
 
     // Prints the matlab code to plot the patches and bounding boxes
     //    for (size_t i = 0; i < 1; i++) {
-      for (size_t i = 0; i < FM.num_patches_; i++) {
+      for (long long i = 0; i < FM.num_patches_; i++) {
         std::cout 
         << "patch = curve.x_t(linspace( " << FM.patches_[i].t1 << "," << FM.patches_[i].t2 <<")); \n" 
         << "plot(patch(1,:), patch(2,:)) \n" 

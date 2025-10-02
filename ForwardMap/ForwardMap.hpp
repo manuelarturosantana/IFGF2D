@@ -4,6 +4,7 @@
 #include <memory>
 #include <unordered_set>
 #include <unordered_map>
+#include <array>
 
 
 
@@ -33,9 +34,18 @@ Current assumptions to watch out for
     2. Currently the Morton box codes only go to 16 levels, which is about k = 512 we add a level
        everytime we double the wave number. The splitby2 and mergeFrom2 functions in IFGF_Source/Level.h 
        will need to be modified, as well as changing long longs to __uint128_t to make this work.
+    3. Singularities only happen at the endpoints of curves.
+    4. Open curves are always singular at both endpoints. If this is not the case, merge the parameterization
+       into a single smooth parameterization.
+    5. Corners are built from the junction of two open curves. ie there is not closed global parameterization
 */
 
-
+// Struct to track, along with a vector which curves touch which
+struct Junction {
+    int touching_curve; // Index of the other curve which this one touches.
+    bool t1_touches_t1; // if true, the t1_lim of this patch touches the t1 lim of the other curve.
+                        // otherwise the t1_lim of this patch the t2_lim of the other patch
+};
 
 /// @brief Class which computes the forward map of the greens function operator
 /// @tparam Np Number of points to use per patch for integration
@@ -50,10 +60,14 @@ class ForwardMap {
 
         double delta_; // Rectangular Polar Near Singularity Parameter
 
-        ClosedCurve& curve_;
+        // Due to lifetime issues I am not going to store this as references
+        // A vector of curve objects
+        std::vector<std::unique_ptr<Curve>> curves_;
+        // For each curve ii, store a vector of arrays where the first element of the array
+        // says curve ii touches curve jj, and the second element tracks at which endpoint.
+        // 0 for tlim1, or 1 for tlim2
+        std::vector<std::vector<Junction>> curve_touch_tracker_;
 
-        
-        int near_singular_patch_est_; // Assume all near singular points are in patches only 1 away from this
         double p_; // Parameter in rectangular polar change of variables.
         double eta_ = 0.0; // Coupling parameter
 
@@ -82,16 +96,19 @@ class ForwardMap {
         
 
         
-        ForwardMap(double delta, ClosedCurve& curve, double wavelengths_per_patch, 
-            double patch_split_wavenumber, int near_singular_patch_est_ = 1, double p = 4);
+        ForwardMap(double delta, std::vector<std::unique_ptr<Curve>> curves, 
+            const std::vector<std::vector<Junction>>& curve_touch_tracker, 
+            double wavelengths_per_patch, 
+            double patch_split_wavenumber, double p = 4);
 
         /// @brief Using a closed curve, computes the patches, and initializes their bounding boxes
+        ///        Note, I know that you don't need to pass data members in, but passing in
+        ///        curves and the tracker makes debugging easier.        
         /// @tparam N The number of points to use in the bounding box computation
-        /// @param curve The curve to be used
         /// @param wavelengths_per_patch Number of wavelengths per patch
         /// @param wavenumber Wavenumber for the problem
         /// @return A vector of patches, which can be passed into the forward map
-        void init_points_and_patches(ClosedCurve& curve, 
+        void init_points_and_patches(
                 double wavelengths_per_patch, double wavenumber);
 
         ///@brief Compute for each patch the point indices of the near singular points

@@ -58,6 +58,7 @@ class Patch {
         // Stores the t-value (in [t1,t2]) of points within the patch for precomputations.
         std::vector<double> point_t_vals_;
         // Store the curve jacobian evaulated at each point in the patch.
+        // Also if applicable add the singularity change of variables.
         Eigen::ArrayXd curve_jac;
 
         // Stores the index over all curve points of the near singular point indices
@@ -65,7 +66,9 @@ class Patch {
         // Location of tvals corresponding to the near singular points.
         std::vector<double>  near_singular_point_ts_; 
         // A set for checking if a point is near singular. 
-        std::unordered_set<long long> near_singular_point_lookup_; 
+        std::unordered_set<long long> near_singular_point_lookup_;
+        // Set which tracks which patches are potentially near singular
+        std::vector<long long> near_singular_patches_est_;
 
 
 
@@ -73,7 +76,7 @@ class Patch {
         // of start of precomputations in near singular precomputations
         // Vector or Eigen matrix of near singular precomputations
 
-    Patch(double t1, double t2, ClosedCurve& curve, double delta) : 
+    Patch(double t1, double t2, Curve& curve, double delta) : 
         t1(t1), t2(t2), curve_(curve), delta(delta) {};
 
     /// @brief Computes a box that bounds the patch within a delta tolerance

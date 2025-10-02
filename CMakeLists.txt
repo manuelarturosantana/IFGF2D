@@ -61,19 +61,19 @@ include_directories(/opt/Eigen/)
 
 
 ############################### FORWARD MAP TESTS #######################################
-# add_executable(InitForwardMap 
-#                 ${GEOMETRY_SOURCES} tests/ForwardMap/InitializeForwardMap.cpp)
-# target_compile_options(InitForwardMap PRIVATE ${COMMON_COMPILE_FLAGS})
+add_executable(InitForwardMap 
+                ${GEOMETRY_SOURCES} tests/ForwardMap/InitializeForwardMap.cpp)
+target_compile_options(InitForwardMap PRIVATE ${COMMON_COMPILE_FLAGS})
 
 # add_executable(SinglePointSingCoeffs
 #                 ${GEOMETRY_SOURCES} tests/ForwardMap/SinglePointSingCoeffs.cpp)
 # target_compile_options(SinglePointSingCoeffs PRIVATE ${COMMON_COMPILE_FLAGS})
 # target_link_libraries(SinglePointSingCoeffs PRIVATE ${COMP_BESSEL_PATH})
 
-# add_executable(ComputeAx
-#                 ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
-# target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
-# target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
+add_executable(ComputeAx
+                ${GEOMETRY_SOURCES} tests/ForwardMap/ComputeAx.cpp)
+target_compile_options(ComputeAx PRIVATE ${COMMON_COMPILE_FLAGS})
+target_link_libraries(ComputeAx PRIVATE ${COMP_BESSEL_PATH})
 
 # add_executable(SolveAndPropagate
 #                 ${GEOMETRY_SOURCES} ${FORWARD_MAP_SOURCES} tests/ForwardMap/SolveAndPropagate.cpp)
@@ -83,9 +83,9 @@ include_directories(/opt/Eigen/)
 
 
 ################################# GEOMETRY TESTS #########################################
-add_executable(ClosedCurvePatchSplitting
-                ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
-target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
+# add_executable(ClosedCurvePatchSplitting
+#                 ${GEOMETRY_SOURCES} tests/Geometry/ClosedCurvePatchSplitting.cpp)
+# target_compile_options(ClosedCurvePatchSplitting PRIVATE ${COMMON_COMPILE_FLAGS})
 
 # add_executable(BoundingBoxTests
 #                 ${GEOMETRY_SOURCES} tests/Geometry/BoundingBoxTests.cpp)

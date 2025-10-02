@@ -13,9 +13,11 @@
 
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-ForwardMap<Np, Formulation, Ps, Pang, Nroot>::ForwardMap(double delta, ClosedCurve& curve, 
-    double wavelengths_per_patch, double patch_split_wavenumber, int near_singular_patch_est, double p) :
-        delta_(delta), curve_(curve), near_singular_patch_est_(near_singular_patch_est), p_(p)
+ForwardMap<Np, Formulation, Ps, Pang, Nroot>::ForwardMap(double delta, 
+    std::vector<std::unique_ptr<Curve>> curves, 
+            const std::vector<std::vector<Junction>>& curve_touch_tracker,  
+            double wavelengths_per_patch, double patch_split_wavenumber, double p) :
+        delta_(delta), curves_(std::move(curves)), curve_touch_tracker_(curve_touch_tracker),  p_(p)
 {   
     // Precompute Quadrature nodes and weights for non-singular integration
     fejer_nodes_ = Eigen::ArrayXd(Np); fejer_weights_ = Eigen::ArrayXd(Np);
@@ -26,57 +28,160 @@ ForwardMap<Np, Formulation, Ps, Pang, Nroot>::ForwardMap(double delta, ClosedCur
     fejerquadrature1(fejer_nodes_ns_, fejer_weights_ns_, num_ns);
 
     // Compute all points used in the discretization and bounding boxes.
-    init_points_and_patches(curve, wavelengths_per_patch, patch_split_wavenumber);
+    init_points_and_patches(wavelengths_per_patch, patch_split_wavenumber);
 
     determine_patch_near_singular_points();
 
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(ClosedCurve& curve, 
+void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
     double wavelengths_per_patch, double wavenumber) {
-
-    std::vector<double> patch_lims = curve.compute_patch_lims(wavelengths_per_patch, wavenumber);
     
-    num_patches_ = patch_lims.size() - 1;
-    total_num_unknowns_ = num_patches_ * Np;
-
-    patches_.clear(); patches_.reserve(num_patches_);
-
+    num_patches_        = 0;
+    total_num_unknowns_ = 0;
+    int pind_start      = 0;
+    
     xs_.clear(); ys_.clear(); nxs_.clear(); nys_.clear();
-    xs_.reserve(num_patches_ * total_num_unknowns_); 
-    ys_.reserve(num_patches_ * total_num_unknowns_);
-    nxs_.reserve(num_patches_ * total_num_unknowns_); 
-    nys_.reserve(num_patches_ * total_num_unknowns_); 
+    patches_.clear();
 
-    for (long long ii = 0; ii < num_patches_; ii++) {
-        patches_.emplace_back(patch_lims[ii], patch_lims[ii + 1], curve, delta_);
+    std::vector<int> patches_per_curve(curves_.size());
+    std::vector<int> curve_patches_start(curves_.size()); // Store start and end points in global patch ordering
+    std::vector<int> curve_patches_end(curves_.size());
 
-        patches_[ii].comp_bounding_box();
+    for (size_t cind = 0; cind < curves_.size(); cind++) {
 
-        patches_[ii].point_t_vals_.reserve(Np);
-        patches_[ii].curve_jac = Eigen::ArrayXd(Np);
+        std::vector<double> patch_lims = curves_[cind]->compute_patch_lims(wavelengths_per_patch, wavenumber);
+        
+        int loc_num_patches_ = patch_lims.size() - 1;
+        patches_per_curve[cind] = patch_lims.size() - 1;
 
-        // Store t, x, y, and curve jacobian for each point in the patch
-        for (int jj = 0; jj < Np; jj++) { 
-            double t_curr = ab2cd(fejer_nodes_[jj], -1.0, 1.0, patch_lims[ii], patch_lims[ii + 1]);
+        curve_patches_start[cind] = pind_start;
 
-            patches_[ii].point_t_vals_.push_back(t_curr);
+        num_patches_ += loc_num_patches_;
 
-            Eigen::Vector2d normal = curve_.normal_t(t_curr);
+        curve_patches_end[cind] = num_patches_;
 
-            double normal_norm = normal.norm();
+        total_num_unknowns_ += loc_num_patches_ * Np;
 
-            patches_[ii].curve_jac(jj) = normal_norm;
+        patches_.reserve(num_patches_);
 
-            normal = normal / normal_norm;
+        xs_.reserve(num_patches_ * total_num_unknowns_); 
+        ys_.reserve(num_patches_ * total_num_unknowns_);
+        nxs_.reserve(num_patches_ * total_num_unknowns_); 
+        nys_.reserve(num_patches_ * total_num_unknowns_); 
 
-            xs_.push_back(curve.xt(t_curr));
-            ys_.push_back(curve.yt(t_curr));
-            nxs_.push_back(normal(0));
-            nys_.push_back(normal(1));
+        for (long long pind = 0; pind < loc_num_patches_; pind++) {
+            patches_.emplace_back(patch_lims[pind], patch_lims[pind + 1], *curves_[cind], delta_);
+
+            patches_[pind_start + pind].comp_bounding_box();
+
+            patches_[pind_start + pind].point_t_vals_.reserve(Np);
+            patches_[pind_start + pind].curve_jac = Eigen::ArrayXd(Np);
+
+            // Store t, x, y, and curve jacobian for each point in the patch
+            for (int jj = 0; jj < Np; jj++) { 
+                double t_m1m;
+                
+                // Change of variables for edges
+                // If open we assume both ends are singular
+                if (!curves_[cind]->is_closed) {
+                    if (loc_num_patches_ == 1) {
+                        t_m1m = both_edge_cov(fejer_nodes_[jj], p_);
+                    } else if (pind == 0) {
+                        t_m1m = minus1_edge_cov(fejer_nodes_[jj], p_);
+                    } else {
+                        t_m1m = plus1_edge_cov(fejer_nodes_[jj], p_);
+                    }
+                } else {
+                    t_m1m = fejer_nodes_[jj];
+                }
+
+
+                // t_curr takes integral from [-1,1] to [patch_lims[pind], patch_lims[pind + 1]]
+                // Singularity change of variables has already been applied
+                double t_curr = ab2cd(t_m1m, -1.0, 1.0, patch_lims[pind], patch_lims[pind + 1]);
+
+                patches_[pind_start + pind].point_t_vals_.push_back(t_curr);
+
+                Eigen::Vector2d normal = curves_[cind]->normal_t(t_curr);
+
+                double normal_norm = normal.norm();
+
+                patches_[pind_start + pind].curve_jac(jj) = normal_norm;
+
+                // Applying the Fejer rule to the integral after change of variables means
+                // that we take the jacobian at the fejer nodes. 
+                if (!curves_[cind]->is_closed) {
+                    if (loc_num_patches_ == 1) {
+                        patches_[pind_start + pind].curve_jac(jj) *= der_both_edge_cov(fejer_nodes_[jj], p_);
+                    } else if (pind == 0) {
+                        patches_[pind_start + pind].curve_jac(jj) *= der_minus1_edge_cov(fejer_nodes_[jj], p_);
+                    } else {
+                        patches_[pind_start + pind].curve_jac(jj) *= der_plus1_edge_cov(fejer_nodes_[jj], p_);
+                    }
+                }
+
+                normal = normal / normal_norm;
+
+                xs_.push_back(curves_[cind]->xt(t_curr));
+                ys_.push_back(curves_[cind]->yt(t_curr));
+                nxs_.push_back(normal(0));
+                nys_.push_back(normal(1));
+            }
         }
+
+        pind_start += loc_num_patches_;
     }
+
+    // Determine patch near singularity
+    pind_start = 0;
+    for (size_t cind = 0; cind < curves_.size(); cind++) {
+        for (int pind = 0; pind < patches_per_curve[cind]; pind++) {
+            if (pind == 0) {
+                // Add next patch and last patch
+                if (curves_[cind]->is_closed) {
+                    patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + patches_per_curve[cind] - 1);
+                    patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind + 1);
+                } else {
+                    // pind == 0 means we are at t1
+                    for (size_t jind = 0; jind < curve_touch_tracker_[cind].size(); jind++) {
+                        if (curve_touch_tracker_[cind][jind].t1_touches_t1) {
+                            patches_[pind_start + pind].near_singular_patches_est_
+                                .push_back(curve_patches_start[curve_touch_tracker_[cind][jind].touching_curve]);
+                        } else {
+                            patches_[pind_start + pind].near_singular_patches_est_
+                                .push_back(curve_patches_end[curve_touch_tracker_[cind][jind].touching_curve]);
+                        }
+                    }
+                }
+            } else if (pind == patches_per_curve[cind] - 1) {
+                // Add patch before, and the first patch
+                if (curves_[cind]->is_closed) {
+                    patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind - 1);
+                    patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start);
+                } else {
+                    // Here means we are at t2
+                    for (size_t jind = 0; jind < curve_touch_tracker_[cind].size(); jind++) {
+                        // Here t2 touches t2
+                        if (curve_touch_tracker_[cind][jind].t1_touches_t1) {
+                            patches_[pind_start + pind].near_singular_patches_est_
+                                .push_back(curve_patches_end[curve_touch_tracker_[cind][jind].touching_curve]);
+                        } else {
+                            patches_[pind_start + pind].near_singular_patches_est_
+                                .push_back(curve_patches_start[curve_touch_tracker_[cind][jind].touching_curve]);
+                        }
+                    }
+                }
+            } else { // If you not on an edge just check two adjacent patches
+                patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind - 1);
+                patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind + 1);
+            }
+        }
+
+        pind_start += patches_per_curve[cind];
+    }
+
 }
 
 template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
@@ -84,26 +189,7 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::determine_patch_near_singular
     for (long long ii = 0; ii < num_patches_; ii++) {
     // Pointer to the current patch to test the near singular points.
     Patch<Nroot>* p_tp = &patches_[ii];
-        for (long long jj = ii - near_singular_patch_est_; jj <= ii + near_singular_patch_est_; jj++) {
-
-            long long test_patch_ind;
-
-            // If there are only 2 patches this prevents double counting the patch
-            if (num_patches_ <= 2 && jj > ii) { continue;}
-
-            // Look at neighboring patches, including endpoints.
-            if (jj == ii) {
-                continue;
-            } else if (jj < 0) {
-                test_patch_ind = num_patches_ + jj;
-                // >= accounts for zero indexing
-            } else if (jj >= num_patches_) {
-                test_patch_ind = jj - num_patches_;
-            } else {
-                test_patch_ind = jj;
-            }
-
-
+        for (long long test_patch_ind : p_tp->near_singular_patches_est_) {
 
             // Loop over the points in the patch, and check if it is near singular
             // We use the global and not patchwise ordering so we can store which points
@@ -119,9 +205,9 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::determine_patch_near_singular
                 if (p_tp->bounding_box_.is_inside(xp, yp)) {
                     
                     // Lambda returning the distance of f to a point on the curve
-                    auto f = [xp, yp, this] (double t) -> double {
-                        double xt = this->curve_.xt(t);
-                        double yt = this->curve_.yt(t);
+                    auto f = [xp, yp, p_tp] (double t) -> double {
+                        double xt = p_tp->curve_.xt(t);
+                        double yt = p_tp->curve_.yt(t);
                         return std::sqrt(std::abs( 
                             (xt - xp) * (xt - xp) + (yt - yp) * (yt - yp)
                            ));
@@ -215,11 +301,11 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_poin
         // Compute the change of variables from [-1,1] to t1, t2;
         double g_xi_alpha = ab2cd(xi_alpha(ii), -1.0, 1.0, patch.t1, patch.t2);
 
-        const double xt = curve_.xt(g_xi_alpha);
-        const double yt = curve_.yt(g_xi_alpha);
+        const double xt = patch.curve_.xt(g_xi_alpha);
+        const double yt = patch.curve_.yt(g_xi_alpha);
   
         // Compute the curve Jacobian
-        Eigen::Vector2d normal = curve_.normal_t(g_xi_alpha);
+        Eigen::Vector2d normal = patch.curve_.normal_t(g_xi_alpha);
         curve_jac(ii) = normal.norm();
 
         // Compute the Green's Function

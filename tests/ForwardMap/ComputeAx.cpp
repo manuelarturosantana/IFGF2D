@@ -2,12 +2,13 @@
 #include <functional>
 #include <array>
 #include <chrono>
-#include<iomanip>
+#include <iomanip>
+#include <memory>
 
 #include "../../complex_bessel-master/include/complex_bessel.h"
 
 #include "../../ForwardMap/ForwardMap.hpp"
-#include "../../Geometry/ClosedCurve.hpp"
+#include "../../Geometry/Curve.hpp"
 #include "../../utils/Rhs.hpp"
 #include "../../utils/Chebyshev1d.hpp"
 
@@ -17,15 +18,20 @@
 // std::cout << vec.format(customFormat) << std::endl;
 int main() {
     double delta = 0.01;
-    double k     = M_PI * 300;
+    double k     = M_PI * 100;
     double wave_lengths_per_patch = 1;
     int m = 3;
-    int nlevels = 8;
+    int nlevels = 5;
 
-    Circle circle;
+    // Circle circle;
+
+    std::vector<std::unique_ptr<Curve>> curves;
+    curves.emplace_back(std::make_unique<Kite>());
+    std::vector<std::vector<Junction>> curve_touch_tracker;
+
     constexpr int num_points = 10;
 
-    ForwardMap<num_points, FormulationType::SingleLayer, 5, 5> FM(delta, circle, wave_lengths_per_patch, k);
+    ForwardMap<num_points, FormulationType::SingleLayer, 5, 5> FM(delta, std::move(curves), curve_touch_tracker, wave_lengths_per_patch, k);
 
     std::cout << "Total number of points: " << FM.total_num_unknowns_ << std::endl;
 
