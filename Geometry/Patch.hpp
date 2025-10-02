@@ -8,7 +8,7 @@
 
 #include "../utils/Chebyshev1d.hpp"
 #include "../utils/Quadrature.hpp"
-#include "ClosedCurve.hpp"
+#include "Curve.hpp"
 
 // Class representing a box, with a method to check if a point is inside the box.
 // 
