@@ -21,6 +21,7 @@ Potential Future Improvements
          If the gss part becomes much to slow
     --> We may want two versions of the Green Function. One for sing/nearsing interactions that
         takes into account cancelation errors, and one for IFGF which doesn't need to account for such errors
+    --> Ad hoc checking a point is actually on the boundayr or not
     --> *** Automatic selection of delta parameter
     --> *** Automatic determination of number of boxes
 */
@@ -40,12 +41,6 @@ Current assumptions to watch out for
     5. Corners are built from the junction of two open curves. ie there is not closed global parameterization
 */
 
-// Struct to track, along with a vector which curves touch which
-struct Junction {
-    int touching_curve; // Index of the other curve which this one touches.
-    bool t1_touches_t1; // if true, the t1_lim of this patch touches the t1 lim of the other curve.
-                        // otherwise the t1_lim of this patch the t2_lim of the other patch
-};
 
 /// @brief Class which computes the forward map of the greens function operator
 /// @tparam Np Number of points to use per patch for integration
@@ -123,7 +118,7 @@ class ForwardMap {
         void compute_precomputations(std::complex<double> wavenumber);
         
         /// @brief Given a patch compute the precomputations corresponding to the weights.
-        /// Works if the point is not on the endpoints 
+        /// 
         /// @param patch The patch to integrate over
         /// @param tsing The in patch t-value corresponding to the singular point, or projected
         ///              point for the near singularity.

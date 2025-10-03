@@ -7,14 +7,15 @@
 #include "../../complex_bessel-master/include/complex_bessel.h"
 
 #include "../../ForwardMap/ForwardMap.hpp"
-#include "../../Geometry/ClosedCurve.hpp"
+#include "../../Geometry/Curve.hpp"
+#include "../../Geometry/Obstacles.hpp"
 #include "../../utils/Rhs.hpp"
 #include "../../utils/Chebyshev1d.hpp"
 
 // File to test solution of the integral equation using GMRES
 int main() {
     double delta = 0.1;
-    double k     = M_PI * 100;
+    double k     = M_PI * 10;
     double wave_lengths_per_patch = 1;
     double x_0 = 0; double y_0 = 0; // Center of the point sources
     int nlevels = 6;
@@ -22,17 +23,22 @@ int main() {
 
     // int nlevels = 8;
 
-    Circle circle;
+    // Circle circle;
+    std::vector<std::unique_ptr<Curve>> curves;
+    std::vector<std::vector<Junction>> curve_touch_tracker;
+
+    make_rect(curves, curve_touch_tracker);
+
     constexpr int num_points = 10;
 
-    ForwardMap<num_points, FormulationType::SingleLayer, 5, 5> FM(delta, circle, wave_lengths_per_patch, k);
+    ForwardMap<num_points, FormulationType::SingleLayer, 5, 5> FM(delta, std::move(curves), curve_touch_tracker, wave_lengths_per_patch, k);
     std::cout << "Num unknowns " << FM.total_num_unknowns_ << std::endl;
 
 
     Eigen::VectorXcd RHS = point_source(FM.xs_, FM.ys_, x_0, y_0, k);
 
-    // Eigen::VectorXcd dens = FM.solve(RHS, k, nlevels, false);
-    Eigen::VectorXcd dens = FM.solve(RHS, k, nlevels, true);
+    Eigen::VectorXcd dens = FM.solve(RHS, k, nlevels, false);
+    // Eigen::VectorXcd dens = FM.solve(RHS, k, nlevels, true);
 
     Eigen::VectorXcd sol_app = FM.propagate_unacc(x_test, y_test, dens, k);
 

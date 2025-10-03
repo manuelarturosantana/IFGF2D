@@ -7,7 +7,7 @@
 #include <Eigen/Dense>
 
 #include "../../ForwardMap/ForwardMap.hpp"
-#include "../../Geometry/ClosedCurve.hpp"
+#include "../../Geometry/Curve.hpp"
 
 
 int main() {

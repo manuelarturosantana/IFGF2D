@@ -21,7 +21,8 @@ set(COMP_BESSEL_PATH "${CMAKE_CURRENT_SOURCE_DIR}/complex_bessel-master/build/li
 
 set(GEOMETRY_SOURCE_DIR Geometry)
 set(GEOMETRY_SOURCES 
-    ${GEOMETRY_SOURCE_DIR}/Curve.cpp)
+    ${GEOMETRY_SOURCE_DIR}/Curve.cpp
+    ${GEOMETRY_SOURCE_DIR}/Obstacles.cpp)
 
 set(FORWARD_MAP_SOURCE_DIR ForwardMap)
 set(FORWARD_MAP_SOURCES
@@ -61,9 +62,9 @@ include_directories(/opt/Eigen/)
 
 
 ############################### FORWARD MAP TESTS #######################################
-add_executable(InitForwardMap 
-                ${GEOMETRY_SOURCES} tests/ForwardMap/InitializeForwardMap.cpp)
-target_compile_options(InitForwardMap PRIVATE ${COMMON_COMPILE_FLAGS})
+# add_executable(InitForwardMap 
+#                 ${GEOMETRY_SOURCES} tests/ForwardMap/InitializeForwardMap.cpp)
+# target_compile_options(InitForwardMap PRIVATE ${COMMON_COMPILE_FLAGS})
 
 # add_executable(SinglePointSingCoeffs
 #                 ${GEOMETRY_SOURCES} tests/ForwardMap/SinglePointSingCoeffs.cpp)

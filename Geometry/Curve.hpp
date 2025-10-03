@@ -6,6 +6,17 @@
 
 #include "../utils/Quadrature.hpp"
 
+// Struct to track, along with a vector which curves touch which
+struct Junction {
+    int touching_curve; // Index of the other curve which this one touches.
+    bool t1_touches_t1; // if true, the t1_lim of this patch touches the t1 lim of the other curve.
+                        // otherwise the t1_lim of this patch the t2_lim of the other patch
+
+    Junction(int touching_curve, bool t1_touches_t1) : touching_curve(touching_curve), 
+        t1_touches_t1(t1_touches_t1) {};
+};
+
+
 // Waring: It is assumed that the parameterization is positively oriented
 class Curve {
     public:

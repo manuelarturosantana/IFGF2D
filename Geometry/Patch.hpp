@@ -46,7 +46,8 @@ class Patch {
 
         double delta;  // RP near singularity parameter
         
-        bool ist1singular, ist2singular;  // Tracks if patch has singularities at the endpoints
+        bool ist1singular = false;
+        bool ist2singular = false;  // Tracks if patch has singularities at the endpoints
 
         // Matrix containing the points varying with column index, and tchebyshev polynomials
         // varying with row index. This convention makes it easier to grab a set of coefficients

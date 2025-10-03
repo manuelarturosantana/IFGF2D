@@ -53,16 +53,16 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
 
         std::vector<double> patch_lims = curves_[cind]->compute_patch_lims(wavelengths_per_patch, wavenumber);
         
-        int loc_num_patches_ = patch_lims.size() - 1;
+        int loc_num_patches = patch_lims.size() - 1;
         patches_per_curve[cind] = patch_lims.size() - 1;
 
         curve_patches_start[cind] = pind_start;
 
-        num_patches_ += loc_num_patches_;
+        num_patches_ += loc_num_patches;
 
         curve_patches_end[cind] = num_patches_;
 
-        total_num_unknowns_ += loc_num_patches_ * Np;
+        total_num_unknowns_ += loc_num_patches * Np;
 
         patches_.reserve(num_patches_);
 
@@ -71,13 +71,27 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
         nxs_.reserve(num_patches_ * total_num_unknowns_); 
         nys_.reserve(num_patches_ * total_num_unknowns_); 
 
-        for (long long pind = 0; pind < loc_num_patches_; pind++) {
+
+        for (long long pind = 0; pind < loc_num_patches; pind++) {
             patches_.emplace_back(patch_lims[pind], patch_lims[pind + 1], *curves_[cind], delta_);
 
             patches_[pind_start + pind].comp_bounding_box();
 
             patches_[pind_start + pind].point_t_vals_.reserve(Np);
             patches_[pind_start + pind].curve_jac = Eigen::ArrayXd(Np);
+
+            // Record if a patch is singular for use during precomputations
+            if (!curves_[cind]->is_closed) {
+                if (loc_num_patches == 1) {
+                    patches_[pind_start + pind].ist1singular = true;
+                    patches_[pind_start + pind].ist2singular = true;
+                } else if (pind == 0) {
+                    patches_[pind_start + pind].ist1singular = true;
+                } else if (pind == loc_num_patches - 1) {
+                    patches_[pind_start + pind].ist2singular = true;
+                }
+            }
+
 
             // Store t, x, y, and curve jacobian for each point in the patch
             for (int jj = 0; jj < Np; jj++) { 
@@ -86,12 +100,14 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                 // Change of variables for edges
                 // If open we assume both ends are singular
                 if (!curves_[cind]->is_closed) {
-                    if (loc_num_patches_ == 1) {
+                    if (loc_num_patches == 1) {
                         t_m1m = both_edge_cov(fejer_nodes_[jj], p_);
                     } else if (pind == 0) {
                         t_m1m = minus1_edge_cov(fejer_nodes_[jj], p_);
-                    } else {
+                    } else if (pind == loc_num_patches - 1) {
                         t_m1m = plus1_edge_cov(fejer_nodes_[jj], p_);
+                    } else {
+                        t_m1m = fejer_nodes_[jj];
                     }
                 } else {
                     t_m1m = fejer_nodes_[jj];
@@ -113,11 +129,11 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                 // Applying the Fejer rule to the integral after change of variables means
                 // that we take the jacobian at the fejer nodes. 
                 if (!curves_[cind]->is_closed) {
-                    if (loc_num_patches_ == 1) {
+                    if (loc_num_patches == 1) {
                         patches_[pind_start + pind].curve_jac(jj) *= der_both_edge_cov(fejer_nodes_[jj], p_);
                     } else if (pind == 0) {
                         patches_[pind_start + pind].curve_jac(jj) *= der_minus1_edge_cov(fejer_nodes_[jj], p_);
-                    } else {
+                    } else if (pind == loc_num_patches - 1) {
                         patches_[pind_start + pind].curve_jac(jj) *= der_plus1_edge_cov(fejer_nodes_[jj], p_);
                     }
                 }
@@ -131,7 +147,7 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
             }
         }
 
-        pind_start += loc_num_patches_;
+        pind_start += loc_num_patches;
     }
 
     // Determine patch near singularity
@@ -263,7 +279,7 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_poin
     // Change of variablesfrom [t1,t2] to [-1,1] cov and curve jacobians. 
     Eigen::ArrayXd g_cov(num_ns), curve_jac(num_ns);
     
-    // Set up Green function evaluations on the left and right
+    // Set up Green function evaluations
     Eigen::ArrayXcd  green(num_ns);
     
     // Location in [-1,1] of the singularity
@@ -299,12 +315,28 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_poin
         cheb_n(ii) = xi_alpha(ii);
 
         // Compute the change of variables from [-1,1] to t1, t2;
-        double g_xi_alpha = ab2cd(xi_alpha(ii), -1.0, 1.0, patch.t1, patch.t2);
+
+        // Edge Singularity Change of variables.
+        double g_xi_alpha;
+        if (patch.ist1singular && patch.ist2singular) {
+            g_xi_alpha = ab2cd(both_edge_cov(xi_alpha(ii),p_),
+                -1.0, 1.0, patch.t1, patch.t2);
+        } else if (patch.ist1singular) {
+            g_xi_alpha = ab2cd(minus1_edge_cov(xi_alpha(ii),p_),
+                -1.0, 1.0, patch.t1, patch.t2);
+        } else if (patch.ist2singular) {
+            g_xi_alpha = ab2cd(plus1_edge_cov(xi_alpha(ii),p_),
+                -1.0, 1.0, patch.t1, patch.t2);
+        } else {
+            g_xi_alpha = ab2cd(xi_alpha(ii), -1.0, 1.0, patch.t1, patch.t2);
+        }
 
         const double xt = patch.curve_.xt(g_xi_alpha);
         const double yt = patch.curve_.yt(g_xi_alpha);
   
-        // Compute the curve Jacobian
+       
+
+        // Per equation 41 in the Rec-Polar paper the smooth density is expaned
         Eigen::Vector2d normal = patch.curve_.normal_t(g_xi_alpha);
         curve_jac(ii) = normal.norm();
 
@@ -312,6 +344,7 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_poin
         normal       /= curve_jac(ii);
         green(ii) = GF<Formulation>(xsing, ysing, xt, yt, normal(0), normal(1),
         eta_, wave_number);
+
     }
 
     Eigen::ArrayXcd integrand_wo_cheb = 
@@ -635,61 +668,7 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve(
 
     return x;
 }
-//  template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-//  Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve_unacc
-//  (const Eigen::VectorXcd& rhs, std::complex<double> wavenumber) {
-    
-//     long long N = rhs.size();
 
-//     compute_precomputations(wavenumber);
-
-//     auto A = [this, wavenumber](const Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
-//     void {compute_Ax_unacc(x, solution, wavenumber);};
-
-//     LinearOperator B(N,N,A);
-
-//     Eigen::opGMRES<LinearOperator> func(B);
-
-//     func.setMaxIterations(GMRES_MAX_ITER_);
-//     func.set_restart(GMRES_MAX_ITER_);
-//     func.setTolerance(GMRES_TOLERANCE_);
-
-//     Eigen::VectorXcd x = func.solve(rhs);
-//     std::cout << func.error() << std::endl;
-//     if (func.info() == Eigen::Success) {
-//         std::cout << "we did it " << std::endl;
-//     }
-
-//     return x;
-//  }
-
-//  // TODO: This is unideal to have this and the above function different
-// template <int Np, FormulationType Formulation, int Ps, int Pang, int Nroot>
-// Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::solve_acc
-// (const Eigen::VectorXcd& rhs, std::complex<double> wavenumber, int nlevels) {
-
-//     BoxTree<Ps, Pang> boxes;
-//     precomps_and_setup(wavenumber, nlevels, boxes);
-
-//     auto A = [this, wavenumber](const Eigen::VectorXcd& x, Eigen::VectorXcd& solution) -> 
-//     void {compute_Ax_unacc(x, solution, wavenumber);};
-
-//      LinearOperator B(N,N,A);
-
-//     Eigen::opGMRES<LinearOperator> func(B);
-
-//     func.setMaxIterations(GMRES_MAX_ITER_);
-//     func.set_restart(GMRES_MAX_ITER_);
-//     func.setTolerance(GMRES_TOLERANCE_);
-
-//     Eigen::VectorXcd x = func.solve(rhs);
-//     std::cout << func.error() << std::endl;
-//     if (func.info() == Eigen::Success) {
-//         std::cout << "we did it " << std::endl;
-//     }
-
-//     return x;
-// }
 //////////////////////////////////////////////////////////////////////////////////////////
 
 ////////////////////////////////// Propagation functions

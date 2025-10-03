@@ -26,7 +26,7 @@ int main() {
     // Circle circle;
 
     std::vector<std::unique_ptr<Curve>> curves;
-    curves.emplace_back(std::make_unique<Kite>());
+    curves.emplace_back(std::make_unique<Circle>());
     std::vector<std::vector<Junction>> curve_touch_tracker;
 
     constexpr int num_points = 10;

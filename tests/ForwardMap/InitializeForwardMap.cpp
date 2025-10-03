@@ -5,13 +5,14 @@
 
 #include "../../ForwardMap/ForwardMap.hpp"
 #include "../../Geometry/Curve.hpp"
+#include "../../Geometry/Obstacles.hpp"
 #include "../../utils/BrentsMethod.hpp"
 
 // Appears to be working :).
 // Can be used to test individual patches.
 int main() {
-    double delta = 0.1;
-    double k     = 5;
+    double delta = 0.01;
+    double k     = 30;
     double wave_lengths_per_patch = 1.0;
 
     // Brents method test
@@ -25,9 +26,14 @@ int main() {
     // std::array<double, 2> out = brent_find_minima(f, -1.0, 3.0);
     // std::cout << "Min = " << out[0] << " f(min) = " << out[1] << std::endl;
 
+    // std::vector<std::unique_ptr<Curve>> curves;
+    // curves.emplace_back(std::make_unique<Kite>());
+    // std::vector<std::vector<Junction>> curve_touch_tracker;
+
     std::vector<std::unique_ptr<Curve>> curves;
-    curves.emplace_back(std::make_unique<Kite>());
     std::vector<std::vector<Junction>> curve_touch_tracker;
+
+    make_rect(curves, curve_touch_tracker);
 
     constexpr int num_points = 10;
     ForwardMap<num_points, FormulationType::SingleLayer> FM(delta, std::move(curves), curve_touch_tracker,
@@ -37,8 +43,8 @@ int main() {
     //    for (size_t i = 0; i < 1; i++) {
       for (long long i = 0; i < FM.num_patches_; i++) {
         std::cout 
-        << "patch = curve.x_t(linspace( " << FM.patches_[i].t1 << "," << FM.patches_[i].t2 <<")); \n" 
-        << "plot(patch(1,:), patch(2,:)) \n" 
+        // << "patch = curve.x_t(linspace( " << FM.patches_[i].t1 << "," << FM.patches_[i].t2 <<")); \n" 
+        // << "plot(patch(1,:), patch(2,:)) \n" 
             << "x = ["  << FM.patches_[i].bounding_box_.Ax << ", " << FM.patches_[i].bounding_box_.Bx  
                  << ", " << FM.patches_[i].bounding_box_.Cx << ", " << FM.patches_[i].bounding_box_.Dx << ", " 
                  << FM.patches_[i].bounding_box_.Ax << "];\n"
@@ -65,17 +71,17 @@ int main() {
 
 
     // for (int pind = FM.num_patches_  - 1 ; pind < FM.num_patches_; pind++) {
-    for (int pind = 0; pind < FM.num_patches_; pind++) {
-        for (size_t ns_ind = 0; ns_ind < FM.patches_[pind].near_singular_point_indices_.size(); ns_ind++) {
-            double tval = FM.patches_[pind].near_singular_point_ts_[ns_ind];
+    // for (int pind = 0; pind < FM.num_patches_; pind++) {
+    //     for (size_t ns_ind = 0; ns_ind < FM.patches_[pind].near_singular_point_indices_.size(); ns_ind++) {
+    //         double tval = FM.patches_[pind].near_singular_point_ts_[ns_ind];
  
-            std::cout << 
-            " tval = " << tval << "\n"
-            << "xp = curve.x_t(tval)" << "\n"
-            << "plot(xp(1), xp(2),'^')" << std::endl;
-        }
+    //         std::cout << 
+    //         " tval = " << tval << "\n"
+    //         << "xp = curve.x_t(tval)" << "\n"
+    //         << "plot(xp(1), xp(2),'^')" << std::endl;
+    //     }
 
-    }
+    // }
 
 
 
