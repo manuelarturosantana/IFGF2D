@@ -29,7 +29,7 @@ ForwardMap<Np, Formulation, Ps, Pang, Nroot>::ForwardMap(double delta,
 
     // Compute all points used in the discretization and bounding boxes.
     init_points_and_patches(wavelengths_per_patch, patch_split_wavenumber);
-
+    
     determine_patch_near_singular_points();
 
 }
@@ -41,7 +41,7 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
     num_patches_        = 0;
     total_num_unknowns_ = 0;
     int pind_start      = 0;
-    
+   
     xs_.clear(); ys_.clear(); nxs_.clear(); nys_.clear();
     patches_.clear();
 
@@ -78,7 +78,8 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
             patches_[pind_start + pind].comp_bounding_box();
 
             patches_[pind_start + pind].point_t_vals_.reserve(Np);
-            patches_[pind_start + pind].curve_jac = Eigen::ArrayXd(Np);
+            patches_[pind_start + pind].curve_jac     = Eigen::ArrayXd(Np);
+            patches_[pind_start + pind].edge_sing_jac = Eigen::ArrayXd(Np);
 
             // Record if a patch is singular for use during precomputations
             if (!curves_[cind]->is_closed) {
@@ -91,6 +92,10 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                     patches_[pind_start + pind].ist2singular = true;
                 }
             }
+
+          
+            
+      
 
 
             // Store t, x, y, and curve jacobian for each point in the patch
@@ -128,13 +133,21 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
 
                 // Applying the Fejer rule to the integral after change of variables means
                 // that we take the jacobian at the fejer nodes. 
+                // Note we multiply the curve jacobian directly here to not repeat computations
+                // during compute_intensities, but save the edge_jacobian for the precomputations.
                 if (!curves_[cind]->is_closed) {
                     if (loc_num_patches == 1) {
-                        patches_[pind_start + pind].curve_jac(jj) *= der_both_edge_cov(fejer_nodes_[jj], p_);
+                        double edge_cov = der_both_edge_cov(fejer_nodes_[jj], p_);
+                        patches_[pind_start + pind].edge_sing_jac(jj) = edge_cov;
+                        patches_[pind_start + pind].curve_jac(jj) *= edge_cov;
                     } else if (pind == 0) {
-                        patches_[pind_start + pind].curve_jac(jj) *= der_minus1_edge_cov(fejer_nodes_[jj], p_);
+                        double edge_cov = der_minus1_edge_cov(fejer_nodes_[jj], p_);
+                        patches_[pind_start + pind].edge_sing_jac(jj) = edge_cov;
+                        patches_[pind_start + pind].curve_jac(jj) *= edge_cov;
                     } else if (pind == loc_num_patches - 1) {
-                        patches_[pind_start + pind].curve_jac(jj) *= der_plus1_edge_cov(fejer_nodes_[jj], p_);
+                        double edge_cov = der_plus1_edge_cov(fejer_nodes_[jj], p_);
+                        patches_[pind_start + pind].edge_sing_jac(jj) = edge_cov;
+                        patches_[pind_start + pind].curve_jac(jj) *= edge_cov;
                     }
                 }
 
@@ -144,11 +157,14 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                 ys_.push_back(curves_[cind]->yt(t_curr));
                 nxs_.push_back(normal(0));
                 nys_.push_back(normal(1));
+
+             
             }
         }
 
         pind_start += loc_num_patches;
     }
+
 
     // Determine patch near singularity
     pind_start = 0;
@@ -159,7 +175,7 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                 if (curves_[cind]->is_closed) {
                     patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + patches_per_curve[cind] - 1);
                     patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind + 1);
-                } else {
+                } else if (curve_touch_tracker_.size() != 0) {
                     // pind == 0 means we are at t1
                     for (size_t jind = 0; jind < curve_touch_tracker_[cind].size(); jind++) {
                         if (curve_touch_tracker_[cind][jind].t1_touches_t1) {
@@ -170,14 +186,18 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                                 .push_back(curve_patches_end[curve_touch_tracker_[cind][jind].touching_curve]);
                         }
                     }
+                } else { // Edge Case of a single curve
+                    if (patches_per_curve[cind] != 1) {
+                        patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind + 1);
+                    }
                 }
             } else if (pind == patches_per_curve[cind] - 1) {
                 // Add patch before, and the first patch
                 if (curves_[cind]->is_closed) {
                     patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind - 1);
                     patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start);
-                } else {
-                    // Here means we are at t2
+                } else if (curve_touch_tracker_.size() != 0) {
+                    // Here pind == patches_per_curve[cind] - 1 means we are at t2
                     for (size_t jind = 0; jind < curve_touch_tracker_[cind].size(); jind++) {
                         // Here t2 touches t2
                         if (curve_touch_tracker_[cind][jind].t1_touches_t1) {
@@ -188,6 +208,10 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                                 .push_back(curve_patches_start[curve_touch_tracker_[cind][jind].touching_curve]);
                         }
                     }
+                } else { // Edge Case of a single curve
+                    if (patches_per_curve[cind] != 1) {
+                    patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind - 1);
+                    }
                 }
             } else { // If you not on an edge just check two adjacent patches
                 patches_[pind_start + pind].near_singular_patches_est_.push_back(pind_start + pind - 1);
@@ -197,6 +221,8 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
 
         pind_start += patches_per_curve[cind];
     }
+
+    
 
 }
 
@@ -334,8 +360,6 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::single_patch_poin
         const double xt = patch.curve_.xt(g_xi_alpha);
         const double yt = patch.curve_.yt(g_xi_alpha);
   
-       
-
         // Per equation 41 in the Rec-Polar paper the smooth density is expaned
         Eigen::Vector2d normal = patch.curve_.normal_t(g_xi_alpha);
         curve_jac(ii) = normal.norm();
@@ -465,12 +489,20 @@ Eigen::VectorXcd ForwardMap<Np, Formulation, Ps, Pang, Nroot>::compute_sing_near
     
     Eigen::VectorXcd out = Eigen::VectorXcd::Zero(Np * num_patches_);
     for (long long pind = 0; pind < num_patches_; pind++) {
-        // Compute the Chebshev coefficients of the density corresponding to that patch
 
-        Eigen::VectorXcd coeffs = Cheb1D::interp_1d<Np>(density.segment<Np>(pind * Np));
+
+        // Compute the Chebshev coefficients of the density corresponding to that patch
+        // Also multiplying by the singularity resolving change of variables
+        Eigen::VectorXcd coeffs;
+        if (patches_[pind].ist1singular || patches_[pind].ist2singular) {
+            Eigen::VectorXcd dens_seg = density.segment<Np>(pind * Np).array() * 
+                     patches_[pind].edge_sing_jac;
+            coeffs = Cheb1D::interp_1d<Np>(dens_seg);
+        } else {
+            coeffs = Cheb1D::interp_1d<Np>(density.segment<Np>(pind * Np));
+        }
         
         // Multiply the Chebshev coefficients by the precomputations
-
         Eigen::VectorXcd precomps_sum =  coeffs.transpose() * patches_[pind].precomputations_;
 
         // Add to the singular parts

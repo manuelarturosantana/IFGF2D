@@ -61,3 +61,22 @@ Eigen::VectorXcd point_source(const std::vector<double>& xs,
 
 
     }
+
+// Test case from Section 4.1 of The Helmholtz Dirichlet and Neumann problems on piecewise smooth open curves
+// Helsing and Jiang
+Eigen::VectorXcd test_case_straight_line(const std::vector<double>& xs, 
+    const std::vector<double> & ys) 
+    {
+
+        Eigen::VectorXcd out(xs.size());
+
+        for (size_t ii = 0; ii < xs.size(); ii++) {
+            double x = xs[ii];
+
+            out[ii] = 4.0 * std::pow(x,3)  + 2.0 * std::pow(x,2) - 3.0 * x - 1;
+        }
+
+        return out;
+
+
+}

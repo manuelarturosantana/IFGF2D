@@ -80,8 +80,8 @@ class ForwardMap {
         Eigen::ArrayXd fejer_nodes_ns_;
         Eigen::ArrayXd fejer_weights_ns_;
 
-        int GMRES_MAX_ITER_ = 200;
-        double GMRES_TOLERANCE_ = 1e-6;
+        int GMRES_MAX_ITER_ = 300;
+        double GMRES_TOLERANCE_ = 1e-10;
 
         // BoxTree<Ps, Pang> boxes_;
 

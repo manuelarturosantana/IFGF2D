@@ -62,6 +62,9 @@ class Patch {
         // Also if applicable add the singularity change of variables.
         Eigen::ArrayXd curve_jac;
 
+        // Edge Resolving Singularity Jacobian
+        Eigen::ArrayXd edge_sing_jac;
+
         // Stores the index over all curve points of the near singular point indices
         std::vector<long long> near_singular_point_indices_;
         // Location of tvals corresponding to the near singular points.
