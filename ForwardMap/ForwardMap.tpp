@@ -93,11 +93,6 @@ void ForwardMap<Np, Formulation, Ps, Pang, Nroot>::init_points_and_patches(
                 }
             }
 
-          
-            
-      
-
-
             // Store t, x, y, and curve jacobian for each point in the patch
             for (int jj = 0; jj < Np; jj++) { 
                 double t_m1m;
